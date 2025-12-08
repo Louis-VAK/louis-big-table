@@ -1,5 +1,5 @@
 // ===============================================================
-//  GitHub Pages 可直接執行版 main.js（無 import）
+// GitHub Pages 版：無 import，純非模組版 Three.js + OrbitControls
 // ===============================================================
 
 const THREE_JS = window.THREE;
@@ -9,13 +9,13 @@ const canvas = document.getElementById("three-canvas");
 const renderer = new THREE_JS.WebGLRenderer({
     canvas,
     antialias: true,
-    alpha: true
+    alpha: true,
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 
 const scene = new THREE_JS.Scene();
-scene.fog = new THREE_JS.FogExp2(0x000000, 0.2);
+scene.fog = new THREE_JS.FogExp2(0x000000, 0.25);
 
 // Camera
 const camera = new THREE_JS.PerspectiveCamera(
@@ -26,7 +26,7 @@ const camera = new THREE_JS.PerspectiveCamera(
 );
 camera.position.set(0, 1.5, 5);
 
-// Controls（非 module 版本）
+// OrbitControls（非 module）
 const controls = new THREE_JS.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enablePan = false;
@@ -36,6 +36,7 @@ controls.maxDistance = 10;
 // =====================================================
 // 粒子聖誕樹
 // =====================================================
+
 const NUM = 2500;
 const basePositions = new Float32Array(NUM * 3);
 const positions = new Float32Array(NUM * 3);
@@ -52,26 +53,25 @@ function treePoint() {
     return {
         x: r * Math.cos(angle),
         y: y - height / 2,
-        z: r * Math.sin(angle)
+        z: r * Math.sin(angle),
     };
 }
 
-// 初始化粒子
 for (let i = 0; i < NUM; i++) {
     const p = treePoint();
+    let idx = i * 3;
 
-    const index = i * 3;
-    basePositions[index] = p.x;
-    basePositions[index + 1] = p.y;
-    basePositions[index + 2] = p.z;
+    basePositions[idx] = p.x;
+    basePositions[idx + 1] = p.y;
+    basePositions[idx + 2] = p.z;
 
-    positions[index] = p.x + (Math.random() - 0.5) * 2;
-    positions[index + 1] = p.y + (Math.random() - 0.5) * 2;
-    positions[index + 2] = p.z + (Math.random() - 0.5) * 2;
+    positions[idx] = p.x + (Math.random() - 0.5) * 2;
+    positions[idx + 1] = p.y + (Math.random() - 0.5) * 2;
+    positions[idx + 2] = p.z + (Math.random() - 0.5) * 2;
 
-    velocities[index] = 0;
-    velocities[index + 1] = 0;
-    velocities[index + 2] = 0;
+    velocities[idx] = 0;
+    velocities[idx + 1] = 0;
+    velocities[idx + 2] = 0;
 }
 
 const geometry = new THREE_JS.BufferGeometry();
@@ -81,17 +81,20 @@ const material = new THREE_JS.PointsMaterial({
     color: 0x88ffcc,
     size: 0.05,
     transparent: true,
-    opacity: 0.9
+    opacity: 0.8,
+    depthWrite: false
 });
 
 const particles = new THREE_JS.Points(geometry, material);
 scene.add(particles);
 
 // =====================================================
-// 相片 Sprite（環繞聖誕樹）
+// 照片 Sprite（環繞聖誕樹）
 // =====================================================
+
 const loader = new THREE_JS.TextureLoader();
-const imgs = [
+
+const photos = [
     "assets/pic1.png",
     "assets/pic2.png",
     "assets/pic3.png",
@@ -102,7 +105,7 @@ const imgs = [
 
 const sprites = [];
 
-imgs.forEach((src) => {
+photos.forEach(src => {
     const texture = loader.load(src);
     const mat = new THREE_JS.SpriteMaterial({ map: texture, transparent: true });
     const sprite = new THREE_JS.Sprite(mat);
@@ -112,8 +115,9 @@ imgs.forEach((src) => {
 });
 
 // =====================================================
-// 指標（互動用）
+// 指標互動
 // =====================================================
+
 const pointer = new THREE_JS.Vector3();
 const pointer2D = new THREE_JS.Vector2();
 
@@ -128,10 +132,7 @@ function updatePointer(evt) {
     ray.setFromCamera(pointer2D, camera);
 
     const plane = new THREE_JS.Plane(new THREE_JS.Vector3(0, 1, 0), 0);
-    const hit = new THREE_JS.Vector3();
-
-    ray.ray.intersectPlane(plane, hit);
-    pointer.copy(hit);
+    ray.ray.intersectPlane(plane, pointer);
 }
 
 window.addEventListener("pointermove", updatePointer);
@@ -139,10 +140,11 @@ window.addEventListener("pointermove", updatePointer);
 // =====================================================
 // 動畫
 // =====================================================
+
 function animate() {
     requestAnimationFrame(animate);
 
-    // ================= 粒子回到形狀 ==================
+    // 粒子吸回樹形
     for (let i = 0; i < NUM; i++) {
         const idx = i * 3;
 
@@ -154,18 +156,19 @@ function animate() {
         velocities[idx + 1] += dy * 0.02;
         velocities[idx + 2] += dz * 0.02;
 
-        // ================= 互動推開效果 ==================
+        // 手勢推開效果
         const px = positions[idx] - pointer.x;
         const py = positions[idx + 1] - pointer.y;
         const pz = positions[idx + 2] - pointer.z;
 
-        const dist = px * px + py * py + pz * pz;
-        if (dist < 1.2) {
-            const d = Math.sqrt(dist);
-            const force = (1.2 - d) * 0.4;
-            velocities[idx] += (px / d) * force;
-            velocities[idx + 1] += (py / d) * force;
-            velocities[idx + 2] += (pz / d) * force;
+        const distSq = px * px + py * py + pz * pz;
+
+        if (distSq < 1.2) {
+            const d = Math.sqrt(distSq);
+            const f = (1.2 - d) * 0.4;
+            velocities[idx] += (px / d) * f;
+            velocities[idx + 1] += (py / d) * f;
+            velocities[idx + 2] += (pz / d) * f;
         }
 
         velocities[idx] *= 0.9;
@@ -179,13 +182,13 @@ function animate() {
 
     geometry.attributes.position.needsUpdate = true;
 
-    // ====================== 相片環繞 ======================
+    // 照片繞樹旋轉
     const t = Date.now() * 0.0004;
-    const radius = 2.3;
+    const r = 2.3;
 
     sprites.forEach((s, i) => {
-        const angle = (i / sprites.length) * Math.PI * 2 + t;
-        s.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+        const angle = i / sprites.length * Math.PI * 2 + t;
+        s.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
         s.lookAt(camera.position);
     });
 
@@ -195,7 +198,7 @@ function animate() {
 
 animate();
 
-// resize
+// Resize
 window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
