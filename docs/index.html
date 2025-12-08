@@ -30,11 +30,11 @@
     }
   </style>
 
-  <!-- Three.js 核心 -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <!-- 正確：非模組版 Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 
-  <!-- OrbitControls（正確且可用） -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+  <!-- 正確：非模組版 OrbitControls（必須用 js，不是 jsm）-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/examples/js/controls/OrbitControls.js"></script>
 
 </head>
 
@@ -43,7 +43,7 @@
 
   <canvas id="three-canvas"></canvas>
 
-  <!-- main.js（非 module 版） -->
+  <!-- 正確：非模組 main.js -->
   <script src="./main.js"></script>
 </body>
 </html>
