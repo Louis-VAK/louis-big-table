@@ -30,10 +30,10 @@
     }
   </style>
 
-  <!-- 🔥 必要 CDN：非 Module 版 Three.js -->
+  <!-- 🔥 非 module 版 Three.js -->
   <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
 
-  <!-- 🔥 必要 CDN：非 Module OrbitControls -->
+  <!-- 🔥 非 module 版 OrbitControls（正確路徑） -->
   <script src="https://unpkg.com/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
 
 </head>
@@ -41,10 +41,9 @@
 <body>
   <div id="tip">拖曳或移動滑鼠 / 手指即可互動</div>
 
-  <!-- Canvas -->
+  <!-- 👇 非 module 版 main.js 必須用這個方式載入 -->
   <canvas id="three-canvas"></canvas>
 
-  <!-- 正確載入 main.js -->
   <script src="./main.js"></script>
 </body>
 </html>
