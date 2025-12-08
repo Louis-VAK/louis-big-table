@@ -29,13 +29,6 @@
       text-shadow: 0 0 5px black;
     }
   </style>
-
-  <!-- 正確載入 Three.js -->
-  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
-
-  <!-- 正確載入 OrbitControls (非 module 版) -->
-  <script src="https://unpkg.com/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
-
 </head>
 
 <body>
@@ -43,7 +36,7 @@
 
   <canvas id="three-canvas"></canvas>
 
-  <!-- 載入 main.js -->
-  <script src="./main.js"></script>
+  <!-- 使用 ES Module -->
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
