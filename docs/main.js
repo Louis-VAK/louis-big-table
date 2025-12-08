@@ -31,7 +31,9 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enablePan = false;
 
-// Particle Tree
+// =====================================================
+// 粒子聖誕樹產生
+// =====================================================
 const NUM = 2500;
 const base = new Float32Array(NUM * 3);
 const pos = new Float32Array(NUM * 3);
@@ -74,29 +76,35 @@ const mat = new THREE.PointsMaterial({
 const particles = new THREE.Points(geo, mat);
 scene.add(particles);
 
-// Load Images
+// =====================================================
+// Sprite 相片（⭐ 修正過路徑）
+// =====================================================
 const loader = new THREE.TextureLoader();
 const imgs = [
-    "assets/pic1.png",
-    "assets/pic2.png",
-    "assets/pic3.png",
-    "assets/pic4.png",
-    "assets/pic5.png",
-    "assets/logo.png"
+    "./assets/pic1.png",
+    "./assets/pic2.png",
+    "./assets/pic3.png",
+    "./assets/pic4.png",
+    "./assets/pic5.png",
+    "./assets/logo.png"
 ];
+
 const sprites = [];
 
 imgs.forEach(src => {
     const tex = loader.load(src);
-    const sm = new THREE.SpriteMaterial({ map: tex });
+    const sm = new THREE.SpriteMaterial({ map: tex, transparent: true });
     const sp = new THREE.Sprite(sm);
     sp.scale.set(1.2, 1.2, 1.2);
     sprites.push(sp);
     scene.add(sp);
 });
 
+// =====================================================
 // Pointer
+// =====================================================
 const pointer = new THREE.Vector3();
+
 window.addEventListener("pointermove", e => {
     const rect = canvas.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -109,10 +117,13 @@ window.addEventListener("pointermove", e => {
     ray.ray.intersectPlane(plane, pointer);
 });
 
-// Animation
+// =====================================================
+// Animation Loop
+// =====================================================
 function animate() {
     requestAnimationFrame(animate);
 
+    // 粒子回到原始樹型
     for (let i = 0; i < NUM; i++) {
         const idx = i * 3;
 
@@ -124,11 +135,13 @@ function animate() {
         vel[idx + 1] += dy * 0.02;
         vel[idx + 2] += dz * 0.02;
 
+        // 互動推開
         const px = pos[idx] - pointer.x;
         const py = pos[idx + 1] - pointer.y;
         const pz = pos[idx + 2] - pointer.z;
 
         const dist = Math.sqrt(px * px + py * py + pz * pz);
+
         if (dist < 1.2) {
             const f = (1.2 - dist) * 0.4;
             vel[idx] += (px / dist) * f;
@@ -147,6 +160,7 @@ function animate() {
 
     geo.attributes.position.needsUpdate = true;
 
+    // 相片旋轉
     const t = Date.now() * 0.0005;
     const r = 2.3;
     sprites.forEach((s, i) => {
@@ -160,3 +174,12 @@ function animate() {
 }
 
 animate();
+
+// =====================================================
+// Resize
+// =====================================================
+window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
