@@ -14,13 +14,11 @@
       width: 100%;
       height: 100%;
     }
-
     #three-canvas {
       width: 100%;
       height: 100%;
       display: block;
     }
-
     #tip {
       position: fixed;
       top: 15px;
@@ -31,15 +29,22 @@
       text-shadow: 0 0 5px black;
     }
   </style>
+
+  <!-- 🔥 必要 CDN：非 Module 版 Three.js -->
+  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+
+  <!-- 🔥 必要 CDN：非 Module OrbitControls -->
+  <script src="https://unpkg.com/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+
 </head>
 
 <body>
   <div id="tip">拖曳或移動滑鼠 / 手指即可互動</div>
 
-  <!-- 🔥 Three.js 要渲染的畫布 -->
+  <!-- Canvas -->
   <canvas id="three-canvas"></canvas>
 
-  <!-- 🔥 正確載入 main.js（相對於 docs/index.html） -->
-  <script type="module" src="./main.js"></script>
+  <!-- 正確載入 main.js -->
+  <script src="./main.js"></script>
 </body>
 </html>
