@@ -1,24 +1,22 @@
 // ===============================================================
-// GitHub Pages 版：無 import，純非模組版 Three.js + OrbitControls
+//  GitHub Pages 可直接執行版 main.js（無 import）
 // ===============================================================
-
-const THREE_JS = window.THREE;
 
 // Renderer & Scene
 const canvas = document.getElementById("three-canvas");
-const renderer = new THREE_JS.WebGLRenderer({
+const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
-    alpha: true,
+    alpha: true
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 
-const scene = new THREE_JS.Scene();
-scene.fog = new THREE_JS.FogExp2(0x000000, 0.25);
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000000, 0.18);
 
 // Camera
-const camera = new THREE_JS.PerspectiveCamera(
+const camera = new THREE.PerspectiveCamera(
     60,
     window.innerWidth / window.innerHeight,
     0.1,
@@ -26,8 +24,8 @@ const camera = new THREE_JS.PerspectiveCamera(
 );
 camera.position.set(0, 1.5, 5);
 
-// OrbitControls（非 module）
-const controls = new THREE_JS.OrbitControls(camera, renderer.domElement);
+// Controls
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enablePan = false;
 controls.minDistance = 2;
@@ -36,8 +34,7 @@ controls.maxDistance = 10;
 // =====================================================
 // 粒子聖誕樹
 // =====================================================
-
-const NUM = 2500;
+const NUM = 2400;
 const basePositions = new Float32Array(NUM * 3);
 const positions = new Float32Array(NUM * 3);
 const velocities = new Float32Array(NUM * 3);
@@ -53,13 +50,13 @@ function treePoint() {
     return {
         x: r * Math.cos(angle),
         y: y - height / 2,
-        z: r * Math.sin(angle),
+        z: r * Math.sin(angle)
     };
 }
 
 for (let i = 0; i < NUM; i++) {
     const p = treePoint();
-    let idx = i * 3;
+    const idx = i * 3;
 
     basePositions[idx] = p.x;
     basePositions[idx + 1] = p.y;
@@ -69,32 +66,27 @@ for (let i = 0; i < NUM; i++) {
     positions[idx + 1] = p.y + (Math.random() - 0.5) * 2;
     positions[idx + 2] = p.z + (Math.random() - 0.5) * 2;
 
-    velocities[idx] = 0;
-    velocities[idx + 1] = 0;
-    velocities[idx + 2] = 0;
+    velocities[idx] = velocities[idx + 1] = velocities[idx + 2] = 0;
 }
 
-const geometry = new THREE_JS.BufferGeometry();
-geometry.setAttribute("position", new THREE_JS.BufferAttribute(positions, 3));
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-const material = new THREE_JS.PointsMaterial({
+const material = new THREE.PointsMaterial({
     color: 0x88ffcc,
     size: 0.05,
     transparent: true,
-    opacity: 0.8,
-    depthWrite: false
+    opacity: 0.9
 });
 
-const particles = new THREE_JS.Points(geometry, material);
+const particles = new THREE.Points(geometry, material);
 scene.add(particles);
 
 // =====================================================
-// 照片 Sprite（環繞聖誕樹）
+// 相片環繞
 // =====================================================
-
-const loader = new THREE_JS.TextureLoader();
-
-const photos = [
+const loader = new THREE.TextureLoader();
+const imgs = [
     "assets/pic1.png",
     "assets/pic2.png",
     "assets/pic3.png",
@@ -105,10 +97,10 @@ const photos = [
 
 const sprites = [];
 
-photos.forEach(src => {
+imgs.forEach(src => {
     const texture = loader.load(src);
-    const mat = new THREE_JS.SpriteMaterial({ map: texture, transparent: true });
-    const sprite = new THREE_JS.Sprite(mat);
+    const mat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const sprite = new THREE.Sprite(mat);
     sprite.scale.set(1, 1, 1);
     scene.add(sprite);
     sprites.push(sprite);
@@ -117,34 +109,32 @@ photos.forEach(src => {
 // =====================================================
 // 指標互動
 // =====================================================
-
-const pointer = new THREE_JS.Vector3();
-const pointer2D = new THREE_JS.Vector2();
+const pointer = new THREE.Vector3();
+const pointerNDC = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 function updatePointer(evt) {
     const rect = canvas.getBoundingClientRect();
-    const x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
 
-    pointer2D.set(x, y);
+    pointerNDC.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+    pointerNDC.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
 
-    const ray = new THREE_JS.Raycaster();
-    ray.setFromCamera(pointer2D, camera);
-
-    const plane = new THREE_JS.Plane(new THREE_JS.Vector3(0, 1, 0), 0);
-    ray.ray.intersectPlane(plane, pointer);
+    raycaster.setFromCamera(pointerNDC, camera);
+    const hit = new THREE.Vector3();
+    raycaster.ray.intersectPlane(groundPlane, hit);
+    pointer.copy(hit);
 }
 
 window.addEventListener("pointermove", updatePointer);
 
 // =====================================================
-// 動畫
+// 動畫主迴圈
 // =====================================================
-
 function animate() {
     requestAnimationFrame(animate);
 
-    // 粒子吸回樹形
+    // 粒子回到樹形狀 + 推開互動
     for (let i = 0; i < NUM; i++) {
         const idx = i * 3;
 
@@ -156,24 +146,22 @@ function animate() {
         velocities[idx + 1] += dy * 0.02;
         velocities[idx + 2] += dz * 0.02;
 
-        // 手勢推開效果
         const px = positions[idx] - pointer.x;
         const py = positions[idx + 1] - pointer.y;
         const pz = positions[idx + 2] - pointer.z;
 
-        const distSq = px * px + py * py + pz * pz;
-
-        if (distSq < 1.2) {
-            const d = Math.sqrt(distSq);
-            const f = (1.2 - d) * 0.4;
-            velocities[idx] += (px / d) * f;
-            velocities[idx + 1] += (py / d) * f;
-            velocities[idx + 2] += (pz / d) * f;
+        const dist = px * px + py * py + pz * pz;
+        if (dist < 1.4) {
+            const d = Math.sqrt(dist);
+            const force = (1.4 - d) * 0.4;
+            velocities[idx] += (px / d) * force;
+            velocities[idx + 1] += (py / d) * force;
+            velocities[idx + 2] += (pz / d) * force;
         }
 
-        velocities[idx] *= 0.9;
-        velocities[idx + 1] *= 0.9;
-        velocities[idx + 2] *= 0.9;
+        velocities[idx] *= 0.88;
+        velocities[idx + 1] *= 0.88;
+        velocities[idx + 2] *= 0.88;
 
         positions[idx] += velocities[idx];
         positions[idx + 1] += velocities[idx + 1];
@@ -182,13 +170,13 @@ function animate() {
 
     geometry.attributes.position.needsUpdate = true;
 
-    // 照片繞樹旋轉
+    // 圖片旋轉
     const t = Date.now() * 0.0004;
-    const r = 2.3;
+    const radius = 2.3;
 
     sprites.forEach((s, i) => {
-        const angle = i / sprites.length * Math.PI * 2 + t;
-        s.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
+        const angle = (i / sprites.length) * Math.PI * 2 + t;
+        s.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
         s.lookAt(camera.position);
     });
 
