@@ -30,9 +30,11 @@
     }
   </style>
 
-  <!-- 🔥 版本完全相容的非 module Three.js 與 OrbitControls -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script>
+  <!-- 正確載入 Three.js -->
+  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+
+  <!-- 正確載入 OrbitControls (非 module 版) -->
+  <script src="https://unpkg.com/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
 
 </head>
 
@@ -41,7 +43,7 @@
 
   <canvas id="three-canvas"></canvas>
 
-  <!-- 直接載入 main.js（無 import） -->
+  <!-- 載入 main.js -->
   <script src="./main.js"></script>
 </body>
 </html>
