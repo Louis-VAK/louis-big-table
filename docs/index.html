@@ -1,25 +1,45 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D 聖誕樹相簿</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 聖誕樹相簿</title>
 
-    <link rel="stylesheet" href="style.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      width: 100%;
+      height: 100%;
+    }
 
-    <!-- Three.js CDN（非 module 版本）-->
-    <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+    #three-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
 
-    <!-- OrbitControls（非 module） -->
-    <script src="https://unpkg.com/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+    #tip {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      color: white;
+      font-size: 20px;
+      z-index: 10;
+      text-shadow: 0 0 5px black;
+    }
+  </style>
 </head>
 
 <body>
-    <div id="info">拖曳或移動滑鼠 / 手指即可互動</div>
+  <div id="tip">拖曳或移動滑鼠 / 手指即可互動</div>
 
-    <!-- Three.js 螢幕 -->
-    <canvas id="three-canvas"></canvas>
+  <!-- 🔥 Three.js 要渲染的畫布 -->
+  <canvas id="three-canvas"></canvas>
 
-    <script src="main.js"></script>
+  <!-- 🔥 正確載入 main.js（相對於 docs/index.html） -->
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
