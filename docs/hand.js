@@ -1,30 +1,52 @@
-// ----------------------------------------------------------
-// 手部中心點偵測（tracking-min.js powered）
-// ----------------------------------------------------------
+// ============================================
+// hand.js — HandTrack.js 手勢偵測模組
+// ============================================
 
-export let handPos = null;
+export let handPos = null;   // 匯出手部中心點 {x, y}
 
-export function startHandTracking(video) {
-    // 註冊「膚色」追蹤（簡單穩定）
-    tracking.ColorTracker.registerColor('hand', function(r, g, b) {
-        return (r > 100 && g < 160 && b < 140);
-    });
+// HandTrack 設定
+const modelParams = {
+  flipHorizontal: true,
+  maxNumBoxes: 1,
+  iouThreshold: 0.5,
+  scoreThreshold: 0.6,
+};
 
-    const tracker = new tracking.ColorTracker(['hand']);
+let model = null;
+let videoElem = null;
 
-    tracker.on('track', function(event) {
-        if (event.data.length > 0) {
-            const box = event.data[0];
+// 啟動手勢偵測
+export async function startHandTracking() {
 
-            // 取手中心點
-            handPos = {
-                x: box.x + box.width / 2,
-                y: box.y + box.height / 2
-            };
-        } else {
-            handPos = null;
-        }
-    });
+  model = await handTrack.load(modelParams);
 
-    tracking.track(video, tracker, { camera: true });
+  // 建立隱藏 video
+  videoElem = document.createElement('video');
+  videoElem.setAttribute('playsinline', '');
+  videoElem.style.display = "none";
+  document.body.appendChild(videoElem);
+
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  videoElem.srcObject = stream;
+  await videoElem.play();
+
+  detectFrame();
+}
+
+// 持續偵測手部
+async function detectFrame() {
+
+  const predictions = await model.detect(videoElem);
+
+  if (predictions.length > 0) {
+    const box = predictions[0].bbox;  // [x, y, w, h]
+    handPos = {
+      x: box[0] + box[2] / 2,
+      y: box[1] + box[3] / 2,
+    };
+  } else {
+    handPos = null;
+  }
+
+  requestAnimationFrame(detectFrame);
 }
