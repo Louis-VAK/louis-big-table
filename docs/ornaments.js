@@ -1,60 +1,54 @@
-// ============================================
-// ornaments.js — 聖誕樹上懸掛圖片
-// ============================================
-
-const imageList = [
-  "./assets/1.png",
-  "./assets/2.png",
-  "./assets/3.png",
-  "./assets/4.png",
-  "./assets/5.png",
-  "./assets/6.png",
-];
-
+// ornaments.js
 export async function createOrnaments(canvas) {
-  const items = [];
+    const ctx = canvas.getContext("2d");
 
-  const loadImg = src => new Promise(res => {
-    const img = new Image();
-    img.src = src;
-    img.onload = () => res(img);
-  });
+    const imgPaths = [
+        "./assets/img1.png",
+        "./assets/img2.png",
+        "./assets/img3.png",
+        "./assets/img4.png",
+        "./assets/img5.png",
+        "./assets/img6.png"
+    ];
 
-  const imgs = await Promise.all(imageList.map(loadImg));
+    const images = await Promise.all(
+        imgPaths.map(src => loadImage(src))
+    );
 
-  const cx = canvas.width / 2;
-  const cy = canvas.height * 0.65;
-
-  imgs.forEach((img, i) => {
-    items.push({
-      img,
-      x: cx + (i - 3) * 120,
-      y: cy - 180 - Math.random() * 120,
-      size: 120,
+    const ornaments = images.map((img, i) => {
+        return {
+            img,
+            x: canvas.width / 2 + Math.cos(i) * 200,
+            y: canvas.height / 2 + Math.sin(i) * 200,
+            size: 120,
+            baseSize: 120
+        };
     });
-  });
 
-  return items;
+    return ornaments;
 }
 
-export function updateOrnaments(ctx, items, handPos) {
-  items.forEach(o => {
+export function updateOrnaments(ctx, ornaments, handPos) {
+    ornaments.forEach(o => {
+        let scale = 1;
 
-    let scale = 1;
+        if (handPos) {
+            const dx = o.x - handPos.x;
+            const dy = o.y - handPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (handPos) {
-      let dx = o.x - handPos.x;
-      let dy = o.y - handPos.y;
-      let dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 130) scale = 1.5;
-    }
+            if (dist < 150) scale = 1.5;
+        }
 
-    ctx.drawImage(
-      o.img,
-      o.x - (o.size * scale) / 2,
-      o.y - (o.size * scale) / 2,
-      o.size * scale,
-      o.size * scale
-    );
-  });
+        const finalSize = o.baseSize * scale;
+        ctx.drawImage(o.img, o.x - finalSize / 2, o.y - finalSize / 2, finalSize, finalSize);
+    });
+}
+
+function loadImage(src) {
+    return new Promise(res => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.src = src;
+    });
 }
