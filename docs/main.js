@@ -3,133 +3,131 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.m
 const canvas = document.getElementById("webgl");
 const scene = new THREE.Scene();
 
+// ---------------- Camera ----------------
 const camera = new THREE.PerspectiveCamera(
   55,
   window.innerWidth / window.innerHeight,
   0.1,
-  1000
+  50
 );
-camera.position.set(0, 1.2, 5);
+camera.position.set(0, 1.5, 5);
 
+// ---------------- Renderer ----------------
 const renderer = new THREE.WebGLRenderer({
-  canvas: canvas,
-  antialias: true,
-  alpha: false,
+  canvas,
+  antialias: true
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0x000000, 1);
+renderer.setPixelRatio(devicePixelRatio);
 
-// ---- Particle Tree Geometry ----
-const particleCount = 3500;
-const particlesGeometry = new THREE.BufferGeometry();
-const positions = new Float32Array(particleCount * 3);
+// ---------------- Particle Tree ----------------
+const particleCount = 3000;
+const geo = new THREE.BufferGeometry();
+const pos = new Float32Array(particleCount * 3);
 
 for (let i = 0; i < particleCount; i++) {
-  const radius = Math.random() * 1.2;
-  const height = Math.random() * 2.5;
-  const angle = Math.random() * Math.PI * 2;
+  // 讓樹分佈更立體
+  const h = Math.random() * 2.8;
+  const r = (2.5 - h) * 0.4;  
+  const a = Math.random() * Math.PI * 2;
 
-  // Cone distribution
-  positions[i * 3 + 0] = Math.cos(angle) * (radius * (1 - height / 3));
-  positions[i * 3 + 1] = height;
-  positions[i * 3 + 2] = Math.sin(angle) * (radius * (1 - height / 3));
+  pos[i * 3] = Math.cos(a) * r;
+  pos[i * 3 + 1] = h;
+  pos[i * 3 + 2] = Math.sin(a) * r;
 }
 
-particlesGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
 
-const particlesMaterial = new THREE.PointsMaterial({
-  color: 0x66ffdd,
-  size: 0.02,
+const mat = new THREE.PointsMaterial({
+  color: 0x55ffee,
+  size: 0.03
 });
 
-const particleTree = new THREE.Points(particlesGeometry, particlesMaterial);
-scene.add(particleTree);
+const tree = new THREE.Points(geo, mat);
+scene.add(tree);
 
-// ---- Mouse Interaction Force ----
+// ---------------- Mouse Tracking ----------------
 const mouse = new THREE.Vector2();
-const forceStrength = 0.15;
-
 window.addEventListener("pointermove", (e) => {
   mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 });
 
-// ---- Sprites (6 images) ----
+// ---------------- Convert mouse to world position ----------------
+const mouseWorld = new THREE.Vector3();
+
+function updateMouseWorld() {
+  raycaster.setFromCamera(mouse, camera);
+  raycaster.ray.at(2.5, mouseWorld); 
+  // 讓互動點落在 Z ≈ 樹的位置
+}
+
+// ---------------- Sprite Album ----------------
 const spriteGroup = new THREE.Group();
 scene.add(spriteGroup);
 
-const textureLoader = new THREE.TextureLoader();
-
-// 6 張相簿圖片
-const imagePaths = [
+const loader = new THREE.TextureLoader();
+const imgs = [
   "./assets/img1.png",
   "./assets/img2.png",
   "./assets/img3.png",
   "./assets/img4.png",
   "./assets/img5.png",
-  "./assets/img6.png",
+  "./assets/img6.png"
 ];
 
-imagePaths.forEach((src, i) => {
-  const tex = textureLoader.load(src);
-  const mat = new THREE.SpriteMaterial({ map: tex });
-  const sprite = new THREE.Sprite(mat);
+imgs.forEach((src, i) => {
+  const texture = loader.load(src);
+  const sm = new THREE.SpriteMaterial({ map: texture });
+  const s = new THREE.Sprite(sm);
 
-  sprite.scale.set(1, 1, 1);
-  sprite.position.set(Math.cos(i) * 2.2, 1.2, Math.sin(i) * 2.2);
+  s.scale.set(1.2, 1.2, 1);
+  const angle = i * (Math.PI * 2 / imgs.length);
 
-  sprite.userData.baseScale = 1;
-
-  spriteGroup.add(sprite);
+  s.position.set(Math.cos(angle) * 2.5, 1.4, Math.sin(angle) * 2.5);
+  spriteGroup.add(s);
 });
 
-// ---- Raycaster for hover scaling ----
 const raycaster = new THREE.Raycaster();
 
-// ---- Animation Loop ----
+// ---------------- Animation Loop ----------------
 function animate() {
   requestAnimationFrame(animate);
 
-  // --- 推開粒子 ---
-  const pos = particleTree.geometry.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const z = pos.getZ(i);
+  updateMouseWorld();
 
-    const vector = new THREE.Vector3(x, y, z);
-    const mouse3D = new THREE.Vector3(mouse.x, mouse.y, 0.5).unproject(camera);
+  const arr = tree.geometry.attributes.position;
 
-    const dist = vector.distanceTo(mouse3D);
+  for (let i = 0; i < arr.count; i++) {
+    const x = arr.getX(i);
+    const y = arr.getY(i);
+    const z = arr.getZ(i);
 
-    if (dist < 0.3) {
-      const push = vector
-        .clone()
-        .sub(mouse3D)
+    const v = new THREE.Vector3(x, y, z);
+
+    const dist = v.distanceTo(mouseWorld);
+
+    if (dist < 0.6) {
+      const push = v.clone()
+        .sub(mouseWorld)
         .normalize()
-        .multiplyScalar(forceStrength * (0.3 - dist));
-
-      pos.setXYZ(i, x + push.x, y + push.y, z + push.z);
+        .multiplyScalar(0.05 * (0.6 - dist));
+      arr.setXYZ(i, x + push.x, y + push.y, z + push.z);
     }
   }
-  pos.needsUpdate = true;
+  arr.needsUpdate = true;
 
-  // --- Sprite 旋轉 ---
-  spriteGroup.rotation.y += 0.003;
+  // rotate album
+  spriteGroup.rotation.y += 0.004;
 
-  // --- Sprite 手勢偵測（放大） ---
+  // detect hover
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(spriteGroup.children);
+  const hits = raycaster.intersectObjects(spriteGroup.children);
 
-  // Reset
-  spriteGroup.children.forEach((sprite) => {
-    sprite.scale.set(sprite.userData.baseScale, sprite.userData.baseScale, 1);
-  });
+  spriteGroup.children.forEach(s => s.scale.set(1.2, 1.2, 1));
 
-  // Hover enlarge
-  intersects.forEach((hit) => {
-    hit.object.scale.set(1.6, 1.6, 1);
+  hits.forEach(hit => {
+    hit.object.scale.set(1.9, 1.9, 1);
   });
 
   renderer.render(scene, camera);
@@ -137,7 +135,7 @@ function animate() {
 
 animate();
 
-// ---- Resize ----
+// ---------------- Resize ----------------
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
