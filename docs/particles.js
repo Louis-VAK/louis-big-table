@@ -1,20 +1,15 @@
-// ============================================
-// particles.js — 2D 聖誕樹粒子
-// ============================================
-
+// particles.js
 export function createParticles(canvas) {
   const particles = [];
-  const cx = canvas.width / 2;
-  const cy = canvas.height * 0.65;
+  const num = 500;
 
-  for (let i = 0; i < 900; i++) {
-    let angle = Math.random() * Math.PI * 2;
-    let radius = Math.random() * 150;
-    let height = Math.random() * 300;
+  for (let i = 0; i < num; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.random() * 200;
 
     particles.push({
-      x: cx + Math.cos(angle) * (radius * (height / 300)),
-      y: cy - height,
+      x: canvas.width / 2 + Math.cos(angle) * radius,
+      y: canvas.height / 2 - radius * 0.7,
       baseX: 0,
       baseY: 0,
       size: 2 + Math.random() * 2,
@@ -25,19 +20,19 @@ export function createParticles(canvas) {
 
 export function updateParticles(ctx, particles, handPos) {
   particles.forEach(p => {
-
-    // 推開效果
     if (handPos) {
-      let dx = p.x - handPos.x;
-      let dy = p.y - handPos.y;
-      let dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 80) {
-        p.x += dx * 0.1;
-        p.y += dy * 0.1;
+      const dx = p.x - handPos.x;
+      const dy = p.y - handPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < 120) {
+        const force = (120 - dist) / 5;
+        p.x += dx / dist * force;
+        p.y += dy / dist * force;
       }
     }
 
-    ctx.fillStyle = "#66e0ff";
+    ctx.fillStyle = "#55ffff";
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx.fill();
