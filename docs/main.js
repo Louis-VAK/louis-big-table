@@ -1,99 +1,140 @@
-import { startHandTracking, handPos } from "./hand.js";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 
-const canvas = document.getElementById("scene");
+import { handPos } from "./hand.js";
 
-// Renderer
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(devicePixelRatio);
+let scene, camera, renderer, controls;
+let treePoints, treeMaterial;
 
-// Scene
-const scene = new THREE.Scene();
-
-// Camera
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 1.5, 4);
-
-// Controls
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-
-// --------------------------------------
-// 粒子聖誕樹資料生成
-// --------------------------------------
-
-function createTreePoints() {
-  const count = 4800;
-  const positions = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-
-  for (let i = 0; i < count; i++) {
-    const h = Math.random() * 2.5;   // 樹高
-    const r = (2.5 - h) * 0.7;       // 樹半徑逐層縮小
-    const theta = Math.random() * Math.PI * 2;
-
-    positions[i * 3] = Math.cos(theta) * r;
-    positions[i * 3 + 1] = h - 1.2;  // 移到場景中間
-    positions[i * 3 + 2] = Math.sin(theta) * r;
-
-    sizes[i] = 6 + Math.random() * 8;
-  }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geo.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
-
-  const material = new THREE.ShaderMaterial({
-    vertexShader: await (await fetch("./shaders/treeVertex.glsl")).text(),
-    fragmentShader: await (await fetch("./shaders/treeFragment.glsl")).text(),
-    uniforms: {
-      uTime: { value: 0 }
-    },
-    transparent: true
-  });
-
-  const points = new THREE.Points(geo, material);
-  scene.add(points);
-
-  return points;
-}
-
-let tree = await createTreePoints();
-
-// --------------------------------------
-// Raycaster（手勢 → 3D互動）
-// --------------------------------------
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-
-function updateHandRay() {
-  if (!handPos) return;
-
-  pointer.x = handPos.x * 2 - 1;
-  pointer.y = -(handPos.y * 2 - 1);
-
-  raycaster.setFromCamera(pointer, camera);
-}
-
-
-// --------------------------------------
-// Animation Loop
-// --------------------------------------
-function animate(t) {
-  requestAnimationFrame(animate);
-
-  updateHandRay();
-
-  // 粒子樹動畫
-  tree.material.uniforms.uTime.value = t * 0.001;
-
-  controls.update();
-  renderer.render(scene, camera);
-}
-
+init();
 animate();
 
-document.getElementById("startBtn").onclick = async () => {
-  await startHandTracking();
-  document.getElementById("startBtn").style.display = "none";
-};
+function init() {
+  const canvas = document.getElementById("scene");
+
+  renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    antialias: true,
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color("black");
+
+  camera = new THREE.PerspectiveCamera(
+    45,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    200
+  );
+  camera.position.set(0, 0, 60);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  // ----------------------------
+  // 建立粒子樹
+  // ----------------------------
+
+  const count = 6000;
+  const positions = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const radius = Math.random() * 10;
+    const height = Math.random() * 25 - 10;
+
+    positions[i * 3] = Math.sin((height / 25) * Math.PI) * radius;
+    positions[i * 3 + 1] = height;
+    positions[i * 3 + 2] = Math.cos((height / 25) * Math.PI) * radius;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+  treeMaterial = new THREE.ShaderMaterial({
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    uniforms: {
+      uTime: { value: 0 },
+      uHand: { value: new THREE.Vector2(-1, -1) },
+      uExplode: { value: 0 },
+    },
+    vertexShader: `
+      uniform float uTime;
+      uniform float uExplode;
+      uniform vec2 uHand;
+
+      attribute vec3 position;
+
+      void main() {
+
+        vec3 pos = position;
+
+        // 手勢爆散力
+        float dx = pos.x - (uHand.x * 20.0);
+        float dy = pos.y - (uHand.y * 20.0);
+        float dist = sqrt(dx*dx + dy*dy);
+
+        float force = uExplode * smoothstep(6.0, 0.0, dist);
+
+        pos.x += dx * force * 0.15;
+        pos.y += dy * force * 0.15;
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        gl_PointSize = 3.0;
+      }
+    `,
+    fragmentShader: `
+      void main() {
+        float d = length(gl_PointCoord - vec2(0.5));
+        if (d > 0.5) discard;
+        gl_FragColor = vec4(0.2, 1.0, 1.0, 1.0);
+      }
+    `,
+  });
+
+  treePoints = new THREE.Points(geometry, treeMaterial);
+  scene.add(treePoints);
+
+  window.addEventListener("resize", onResize);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  controls.update();
+
+  treeMaterial.uniforms.uTime.value += 0.02;
+
+  // ----------------------------
+  // 手勢 → 3D 爆散控制
+  // ----------------------------
+  if (handPos) {
+    treeMaterial.uniforms.uHand.value.set(
+      (handPos.x - 0.5) * 2,     // 映射到 -1 ~ 1
+      -(handPos.y - 0.5) * 2
+    );
+
+    // 手靠近 → 爆散啟動
+    treeMaterial.uniforms.uExplode.value += 0.05;
+    if (treeMaterial.uniforms.uExplode.value > 1) {
+      treeMaterial.uniforms.uExplode.value = 1;
+    }
+  } else {
+    // 手離開 → 慢慢復原
+    treeMaterial.uniforms.uExplode.value -= 0.03;
+    if (treeMaterial.uniforms.uExplode.value < 0) {
+      treeMaterial.uniforms.uExplode.value = 0;
+    }
+  }
+
+  renderer.render(scene, camera);
+}
