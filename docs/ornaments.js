@@ -1,86 +1,60 @@
-// ornaments.js
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js";
-import { handPosition3D } from "./hand-tracking.js";
+// ============================================
+// ornaments.js — 聖誕樹上懸掛圖片
+// ============================================
 
-export let ornamentGroup;
+const imageList = [
+  "./assets/1.png",
+  "./assets/2.png",
+  "./assets/3.png",
+  "./assets/4.png",
+  "./assets/5.png",
+  "./assets/6.png",
+];
 
-export function createOrnaments(scene) {
-  ornamentGroup = new THREE.Group();
-  scene.add(ornamentGroup);
+export async function createOrnaments(canvas) {
+  const items = [];
 
-  const loader = new THREE.TextureLoader();
-
-  const imgs = [
-    "./assets/img1.png",
-    "./assets/img2.png",
-    "./assets/img3.png",
-    "./assets/img4.png",
-    "./assets/img5.png",
-    "./assets/img6.png"
-  ];
-
-  function treeRadius(h) {
-    return (2.5 - h) * 0.4;
-  }
-
-  function randomPoint() {
-    let h = Math.random() * 2.6 + 0.1;
-    let r = treeRadius(h);
-    let a = Math.random() * Math.PI * 2;
-
-    return new THREE.Vector3(
-      Math.cos(a) * r,
-      h,
-      Math.sin(a) * r
-    );
-  }
-
-  let used = [];
-
-  function noOverlap(p) {
-    return used.every(u => u.distanceTo(p) > 0.9);
-  }
-
-  imgs.forEach((src) => {
-    let p;
-    do {
-      p = randomPoint();
-    } while (!noOverlap(p));
-
-    used.push(p);
-
-    const tex = loader.load(src);
-    const sm = new THREE.SpriteMaterial({ map: tex });
-    const sp = new THREE.Sprite(sm);
-
-    sp.position.copy(p);
-    sp.scale.set(1, 1, 1);
-    sp.userData.base = 1;
-
-    ornamentGroup.add(sp);
+  const loadImg = src => new Promise(res => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => res(img);
   });
+
+  const imgs = await Promise.all(imageList.map(loadImg));
+
+  const cx = canvas.width / 2;
+  const cy = canvas.height * 0.65;
+
+  imgs.forEach((img, i) => {
+    items.push({
+      img,
+      x: cx + (i - 3) * 120,
+      y: cy - 180 - Math.random() * 120,
+      size: 120,
+    });
+  });
+
+  return items;
 }
 
-export function updateOrnaments() {
-  if (!ornamentGroup) return;
-  if (!handPosition3D) {
-    ornamentGroup.children.forEach(s => s.scale.set(1, 1, 1));
-    return;
-  }
+export function updateOrnaments(ctx, items, handPos) {
+  items.forEach(o => {
 
-  const hand = new THREE.Vector3(
-    handPosition3D.x,
-    handPosition3D.y,
-    handPosition3D.z * 2.2
-  );
+    let scale = 1;
 
-  ornamentGroup.children.forEach(s => {
-    const dist = s.position.distanceTo(hand);
-
-    if (dist < 0.7) {
-      s.scale.set(1.6, 1.6, 1);
-    } else {
-      s.scale.set(1, 1, 1);
+    if (handPos) {
+      let dx = o.x - handPos.x;
+      let dy = o.y - handPos.y;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 130) scale = 1.5;
     }
+
+    ctx.drawImage(
+      o.img,
+      o.x - (o.size * scale) / 2,
+      o.y - (o.size * scale) / 2,
+      o.size * scale,
+      o.size * scale
+    );
   });
 }
