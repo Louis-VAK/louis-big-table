@@ -1,9 +1,9 @@
-// docs/hand.js
 export let handPos = null;
 
+import { Hands } from "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
+import { Camera } from "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
+
 let videoEl = null;
-let hands = null;
-let camera = null;
 
 export async function startHandTracking() {
   videoEl = document.createElement("video");
@@ -11,8 +11,7 @@ export async function startHandTracking() {
   videoEl.style.display = "none";
   document.body.appendChild(videoEl);
 
-  // Hands（來自 index.html Script，全域變數）
-  hands = new Hands({
+  const hands = new Hands({
     locateFile: (file) =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
   });
@@ -20,14 +19,13 @@ export async function startHandTracking() {
   hands.setOptions({
     maxNumHands: 1,
     modelComplexity: 1,
-    minDetectionConfidence: 0.6,
-    minTrackingConfidence: 0.5,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.7,
   });
 
   hands.onResults(onResults);
 
-  // Camera（也是全域變數）
-  camera = new Camera(videoEl, {
+  const camera = new Camera(videoEl, {
     onFrame: async () => {
       await hands.send({ image: videoEl });
     },
@@ -35,18 +33,15 @@ export async function startHandTracking() {
     height: 480,
   });
 
-  await camera.start();
+  camera.start();
 }
 
 function onResults(results) {
-  if (
-    !results.multiHandLandmarks ||
-    results.multiHandLandmarks.length === 0
-  ) {
+  if (!results.multiHandLandmarks?.length) {
     handPos = null;
     return;
   }
 
-  const pt = results.multiHandLandmarks[0][9]; // index MCP
+  const pt = results.multiHandLandmarks[0][9]; // index-finger MCP
   handPos = { x: pt.x, y: pt.y };
 }
