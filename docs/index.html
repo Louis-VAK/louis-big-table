@@ -1,25 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Gesture Christmas Tree</title>
-    <link rel="stylesheet" href="./style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gesture Christmas Tree</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
-
 <body>
 
-    <button id="startBtn">Start Interaction</button>
-    <canvas id="scene"></canvas>
+  <button id="startBtn" style="position:absolute; left:20px; top:20px; z-index:10;">
+    Start Interaction
+  </button>
 
-    <!-- 手勢追蹤（新版本，不用 Mediapipe） -->
-    <script type="module" src="./lib/tracking-min.js"></script>
+  <canvas id="scene"></canvas>
 
-    <!-- 手勢整合器（輸出 handPos） -->
-    <script type="module" src="./hand.js"></script>
+  <!-- TensorFlow & HandTrack.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.12.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/handtrackjs@0.0.22/dist/handtrack.min.js"></script>
 
-    <!-- 主控制程式：粒子、飾品、手勢互動 -->
-    <script type="module" src="./main.js"></script>
+  <!-- 手勢模組 -->
+  <script type="module" src="./hand.js"></script>
 
+  <!-- 主控制模組 -->
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
