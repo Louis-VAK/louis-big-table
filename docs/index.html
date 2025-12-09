@@ -7,7 +7,7 @@
 
   <link rel="stylesheet" href="./style.css" />
 
-  <!-- Three.js（支援全域 THREE 的穩定版本 r128） -->
+  <!-- Three.js（支援全域 THREE 的版本 r128） -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
   <!-- OrbitControls（對應 r128） -->
@@ -17,11 +17,22 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 </head>
+
 <body>
 
   <button id="startBtn">Start Interaction</button>
   <canvas id="scene"></canvas>
 
+  <!-- 聖誕樹生成函式 -->
+  <script src="./tree.js"></script>
+
+  <!-- 工具程式（如果有） -->
+  <script src="./utils.js"></script>
+
+  <!-- 手勢 tracking -->
+  <script src="./hand.js"></script>
+
+  <!-- 主程式 -->
   <script src="./main.js"></script>
 
 </body>
