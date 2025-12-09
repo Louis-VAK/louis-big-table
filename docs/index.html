@@ -8,20 +8,16 @@
 </head>
 <body>
 
-  <button id="startBtn" style="position:absolute; left:20px; top:20px; z-index:10;">
-    Start Interaction
-  </button>
-
+  <button id="startBtn">Start Interaction</button>
   <canvas id="scene"></canvas>
 
-  <!-- TensorFlow & HandTrack.js -->
+  <!-- TensorFlow + Handtrack CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.12.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/handtrackjs@0.0.22/dist/handtrack.min.js"></script>
 
-  <!-- 手勢模組 -->
+  <!-- modules -->
   <script type="module" src="./hand.js"></script>
-
-  <!-- 主控制模組 -->
   <script type="module" src="./main.js"></script>
+
 </body>
 </html>
