@@ -1,31 +1,31 @@
-window.createTree = function (scene) {
-  const particleCount = 3000;
+function createTree(scene) {
+  const particleCount = 1800;
   const geometry = new THREE.BufferGeometry();
-
-  const positions = new Float32Array(particleCount * 3);
+  const positions = [];
 
   for (let i = 0; i < particleCount; i++) {
-    const y = rand(-1, 1);
-    const radius = 1.5 * (1 - Math.abs(y));
+    const radius = Math.random() * 1.2 * (1 - i / particleCount);
+    const angle = Math.random() * Math.PI * 2;
+    const height = (i / particleCount) * 2.5;
 
-    const angle = rand(0, Math.PI * 2);
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
+    const x = radius * Math.cos(angle);
+    const z = radius * Math.sin(angle);
+    const y = height - 1;
 
-    positions[i * 3] = x;
-    positions[i * 3 + 1] = y * 3;
-    positions[i * 3 + 2] = z;
+    positions.push(x, y, z);
   }
 
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3)
+  );
 
   const material = new THREE.PointsMaterial({
-    color: 0x00eaff,
-    size: 0.03,
+    color: 0x66ccff,
+    size: 0.025,
   });
 
   const tree = new THREE.Points(geometry, material);
   scene.add(tree);
-
   return tree;
-};
+}
