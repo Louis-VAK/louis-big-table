@@ -22,6 +22,17 @@
   <button id="startBtn">Start Interaction</button>
   <canvas id="scene"></canvas>
 
+  <!-- 🔥 注：這段必須放在 main.js 之前 -->
+  <script type="module">
+    import { startHandTracking } from "./hand.js";
+
+    document.getElementById("startBtn").onclick = () => {
+      startHandTracking();
+      document.getElementById("startBtn").style.display = "none";
+    };
+  </script>
+
+  <!-- 主程式 -->
   <script type="module" src="./main.js"></script>
 
 </body>
