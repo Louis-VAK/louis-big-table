@@ -1,16 +1,12 @@
 window.handPos = null;
 
-let videoEl = null;
-let hands = null;
+function startHandTracking() {
+  const video = document.createElement("video");
+  video.setAttribute("playsinline", "");
+  video.style.display = "none";
+  document.body.appendChild(video);
 
-// 啟動手勢追蹤
-window.startHandTracking = async function () {
-  videoEl = document.createElement("video");
-  videoEl.setAttribute("playsinline", "");
-  videoEl.style.display = "none";
-  document.body.appendChild(videoEl);
-
-  hands = new Hands({
+  const hands = new Hands({
     locateFile: (file) =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
   });
@@ -22,26 +18,22 @@ window.startHandTracking = async function () {
     minTrackingConfidence: 0.5,
   });
 
-  hands.onResults(onResults);
+  hands.onResults((results) => {
+    if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+      window.handPos = null;
+      return;
+    }
+    const pt = results.multiHandLandmarks[0][9]; // index finger MCP
+    window.handPos = { x: pt.x, y: pt.y };
+  });
 
-  const camera = new Camera(videoEl, {
-    onFrame: async () => {
-      await hands.send({ image: videoEl });
-    },
+  const camera = new Camera(video, {
+    onFrame: async () => await hands.send({ image: video }),
     width: 640,
     height: 480,
   });
 
-  await camera.start();
-};
-
-function onResults(results) {
-  if (!results.multiHandLandmarks?.length) {
-    handPos = null;
-    return;
-  }
-
-  // 取食指 MCP（穩定）
-  const pt = results.multiHandLandmarks[0][9];
-  handPos = { x: pt.x, y: pt.y };
+  camera.start();
 }
+
+window.startHandTracking = startHandTracking;
