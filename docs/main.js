@@ -1,61 +1,73 @@
-// main.js
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js";
+//--------------------------------------------------------------
+// 主 3D 聖誕樹互動控制 + 手勢追蹤（最終版）
+//--------------------------------------------------------------
 
-import { initHandTracking } from "./hand-tracking.js";
-import { createParticleTree, updateParticles } from "./particles.js";
+import { HandTracker } from "./lib/mediapipe_hands.js";
+import { createParticles, updateParticles } from "./particles.js";
 import { createOrnaments, updateOrnaments } from "./ornaments.js";
 
-const canvas = document.getElementById("webgl");
-const video = document.getElementById("webcam");
-const startBtn = document.getElementById("start-btn");
-const startContainer = document.getElementById("start-container");
+//--------------------------------------------------------------
+// Canvas Scene 初始化
+//--------------------------------------------------------------
 
-// ---------------- Camera ----------------
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  55,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  50
-);
-camera.position.set(0, 1.5, 5);
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
 
-// ---------------- Renderer ----------------
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true
-});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(devicePixelRatio);
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// ---------------- Create Objects ----------------
-createParticleTree(scene);
-createOrnaments(scene);
+let particles = createParticles(canvas);
+let ornaments = createOrnaments(canvas);
 
-// ---------------- Start Button ----------------
+// 手勢資料（21 個點）
+let handLandmarks = null;
+
+//--------------------------------------------------------------
+// 啟動手勢追蹤
+//--------------------------------------------------------------
+
+const startBtn = document.getElementById("startBtn");
+
 startBtn.addEventListener("click", async () => {
-  startContainer.style.display = "none";
-  canvas.style.display = "block";
 
-  // 啟動鏡頭 + 手勢追蹤
-  initHandTracking(video);
+    // 啟動鏡頭 + 手勢
+    const tracker = new HandTracker({
+        onResults: (r) => {
+            if (!r.multiHandLandmarks) {
+                handLandmarks = null;
+                return;
+            }
+            handLandmarks = r.multiHandLandmarks[0];
+        }
+    });
+
+    await tracker.start();
+
+    startBtn.style.display = "none";
 });
 
-// ---------------- Animation Loop ----------------
-function animate() {
-  requestAnimationFrame(animate);
+//--------------------------------------------------------------
+// 主畫面渲染迴圈
+//--------------------------------------------------------------
 
-  updateParticles();
-  updateOrnaments();
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  renderer.render(scene, camera);
+    const handPos = handLandmarks
+        ? handLandmarks[9] // 中間最穩的點（食指根部 MCP）
+        : null;
+
+    //--------------------------------------------
+    // 粒子互動 → 手靠近會推開
+    //--------------------------------------------
+    updateParticles(ctx, particles, handPos);
+
+    //--------------------------------------------
+    // 聖誕樹飾品互動 → 手靠近放大
+    //--------------------------------------------
+    updateOrnaments(ctx, ornaments, handPos);
+
+    requestAnimationFrame(render);
 }
 
-animate();
-
-// ---------------- Resize ----------------
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+render();
