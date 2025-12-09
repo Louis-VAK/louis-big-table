@@ -1,14 +1,18 @@
 window.handPos = null;
 
 function startHandTracking() {
+
+  console.log("🚀 Hand tracking start");
+
   const video = document.createElement("video");
   video.setAttribute("playsinline", "");
   video.style.display = "none";
   document.body.appendChild(video);
 
+  // 🔥 使用可用版本的 Mediapipe Hands
   const hands = new Hands({
     locateFile: (file) =>
-      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
   });
 
   hands.setOptions({
@@ -19,6 +23,8 @@ function startHandTracking() {
   });
 
   hands.onResults((results) => {
+    console.log("📷 callback → ", results.multiHandLandmarks);
+
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
       window.handPos = null;
       return;
@@ -26,6 +32,8 @@ function startHandTracking() {
 
     const pt = results.multiHandLandmarks[0][9];
     window.handPos = { x: pt.x, y: pt.y };
+
+    console.log("👉 handPos:", window.handPos);
   });
 
   const camera = new Camera(video, {
@@ -35,6 +43,8 @@ function startHandTracking() {
   });
 
   camera.start();
+
+  console.log("📸 Camera started");
 }
 
 window.startHandTracking = startHandTracking;
