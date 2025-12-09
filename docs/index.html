@@ -1,39 +1,31 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Gesture Particle Christmas Tree</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Gesture Christmas Tree</title>
 
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css">
 
-  <!-- Three.js -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+  <!-- Three.js（最後支援 THREE 全域變數的版本） -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js"></script>
 
-  <!-- OrbitControls -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/controls/OrbitControls.js"></script>
-
-  <!-- MediaPipe Hands -->
+  <!-- MediaPipe（全域模式，非 import，最不會出錯） -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
 </head>
 <body>
 
   <button id="startBtn">Start Interaction</button>
   <canvas id="scene"></canvas>
 
-  <!-- 🔥 注：這段必須放在 main.js 之前 -->
-  <script type="module">
-    import { startHandTracking } from "./hand.js";
-
-    document.getElementById("startBtn").onclick = () => {
-      startHandTracking();
-      document.getElementById("startBtn").style.display = "none";
-    };
-  </script>
-
-  <!-- 主程式 -->
-  <script type="module" src="./main.js"></script>
+  <!-- 順序不能錯 -->
+  <script src="./utils.js"></script>
+  <script src="./hand.js"></script>
+  <script src="./tree.js"></script>
+  <script src="./main.js"></script>
 
 </body>
 </html>
