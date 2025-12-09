@@ -1,52 +1,36 @@
-// docs/hand.js
-export let handPos = null;
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Gesture Christmas Tree</title>
 
-let videoEl = null;
-let hands = null;
-let camera = null;
+  <link rel="stylesheet" href="./style.css" />
 
-export async function startHandTracking() {
-  videoEl = document.createElement("video");
-  videoEl.setAttribute("playsinline", "");
-  videoEl.style.display = "none";
-  document.body.appendChild(videoEl);
+  <!-- Three.js Core -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
 
-  // use global Hands from the loaded CDN script
-  hands = new Hands({
-    locateFile: (file) =>
-      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-  });
+  <!-- Three.js Loaders -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/loaders/GLTFLoader.js"></script>
 
-  hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.6,
-    minTrackingConfidence: 0.5,
-  });
+  <!-- OrbitControls（除錯用，看3D角度） -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/controls/OrbitControls.js"></script>
 
-  hands.onResults(onResults);
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
-  // use global Camera from the loaded CDN script
-  camera = new Camera(videoEl, {
-    onFrame: async () => {
-      await hands.send({ image: videoEl });
-    },
-    width: 640,
-    height: 480,
-  });
+</head>
+<body>
 
-  await camera.start();
-}
+  <!-- 手勢啟動按鈕 -->
+  <button id="startBtn">Start Interaction</button>
 
-function onResults(results) {
-  if (
-    !results.multiHandLandmarks ||
-    results.multiHandLandmarks.length === 0
-  ) {
-    handPos = null;
-    return;
-  }
+  <!-- 3D 渲染畫布 -->
+  <canvas id="scene"></canvas>
 
-  const p = results.multiHandLandmarks[0][9]; // index finger MCP
-  handPos = { x: p.x, y: p.y };
-}
+  <!-- 主程式 -->
+  <script type="module" src="./main.js"></script>
+
+</body>
+</html>
