@@ -1,15 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Gesture Interactive Christmas Tree</title>
+  <title>3D 手勢互動聖誕樹相簿</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
+
 <body>
+  <!-- 啟動按鈕 -->
+  <div id="start-container">
+    <button id="start-btn">Start Interaction</button>
+  </div>
+
+  <!-- 3D 畫布 -->
   <canvas id="webgl"></canvas>
 
-  <!-- Main Script -->
+  <!-- 手勢鏡頭畫面（隱藏，不給使用者看） -->
+  <video id="webcam" autoplay playsinline></video>
+
+  <!-- Modules -->
   <script type="module" src="./main.js"></script>
 </body>
 </html>
