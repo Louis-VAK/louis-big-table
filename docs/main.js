@@ -16,10 +16,12 @@ camera.position.set(0, 1.5, 5);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-const tree = createTree(scene); // 來自 tree.js
+// Tree
+const tree = createTree(scene);
 
+// Start hand tracking
 document.getElementById("startBtn").onclick = () => {
-  startHandTracking(); // 來自 hand.js
+  startHandTracking();
 };
 
 function animate() {
