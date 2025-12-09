@@ -23,7 +23,8 @@ function startHandTracking() {
       window.handPos = null;
       return;
     }
-    const pt = results.multiHandLandmarks[0][9]; // index finger MCP
+
+    const pt = results.multiHandLandmarks[0][9];
     window.handPos = { x: pt.x, y: pt.y };
   });
 
