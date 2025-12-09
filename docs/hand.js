@@ -1,10 +1,9 @@
 // docs/hand.js
 export let handPos = null;
 
-import { Hands } from "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
-import { Camera } from "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
-
 let videoEl = null;
+let hands = null;
+let camera = null;
 
 export async function startHandTracking() {
   videoEl = document.createElement("video");
@@ -12,7 +11,8 @@ export async function startHandTracking() {
   videoEl.style.display = "none";
   document.body.appendChild(videoEl);
 
-  const hands = new Hands({
+  // Hands（來自 index.html Script，全域變數）
+  hands = new Hands({
     locateFile: (file) =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
   });
@@ -26,7 +26,8 @@ export async function startHandTracking() {
 
   hands.onResults(onResults);
 
-  const camera = new Camera(videoEl, {
+  // Camera（也是全域變數）
+  camera = new Camera(videoEl, {
     onFrame: async () => {
       await hands.send({ image: videoEl });
     },
@@ -46,6 +47,6 @@ function onResults(results) {
     return;
   }
 
-  const pt = results.multiHandLandmarks[0][9]; // index finger MCP
+  const pt = results.multiHandLandmarks[0][9]; // index MCP
   handPos = { x: pt.x, y: pt.y };
 }
