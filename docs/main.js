@@ -1,140 +1,84 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
-
-import { handPos } from "./hand.js";
-
+// ------- 全域變數 -------
 let scene, camera, renderer, controls;
-let treePoints, treeMaterial;
+let treeParticles, particleMaterial;
+let clock = new THREE.Clock();
 
-init();
-animate();
-
+// ====== 初始化場景 ======
 function init() {
   const canvas = document.getElementById("scene");
 
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+
+  camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(0, 2, 6);
+
   renderer = new THREE.WebGLRenderer({
     canvas: canvas,
-    antialias: true,
+    antialias: true
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
 
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color("black");
+  // OrbitControls（你已經用 CDN 載入）
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-  camera = new THREE.PerspectiveCamera(
-    45,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    200
-  );
-  camera.position.set(0, 0, 60);
+  createTree();
+  animate();
+}
 
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
+// ====== 建立 3D 聖誕樹粒子 ======
+function createTree() {
+  const numParticles = 2500;
+  const positions = [];
+  const sizes = [];
 
-  // ----------------------------
-  // 建立粒子樹
-  // ----------------------------
+  for (let i = 0; i < numParticles; i++) {
+    const y = Math.random() * 3;
+    const radius = 1.2 - y * 0.35;
+    const angle = Math.random() * Math.PI * 2;
 
-  const count = 6000;
-  const positions = new Float32Array(count * 3);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
 
-  for (let i = 0; i < count; i++) {
-    const radius = Math.random() * 10;
-    const height = Math.random() * 25 - 10;
-
-    positions[i * 3] = Math.sin((height / 25) * Math.PI) * radius;
-    positions[i * 3 + 1] = height;
-    positions[i * 3 + 2] = Math.cos((height / 25) * Math.PI) * radius;
+    positions.push(x, y - 1.5, z);
+    sizes.push(Math.random() * 5 + 1);
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
 
-  treeMaterial = new THREE.ShaderMaterial({
+  particleMaterial = new THREE.PointsMaterial({
+    color: 0x66ffff,
+    size: 0.05,
     transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    uniforms: {
-      uTime: { value: 0 },
-      uHand: { value: new THREE.Vector2(-1, -1) },
-      uExplode: { value: 0 },
-    },
-    vertexShader: `
-      uniform float uTime;
-      uniform float uExplode;
-      uniform vec2 uHand;
-
-      attribute vec3 position;
-
-      void main() {
-
-        vec3 pos = position;
-
-        // 手勢爆散力
-        float dx = pos.x - (uHand.x * 20.0);
-        float dy = pos.y - (uHand.y * 20.0);
-        float dist = sqrt(dx*dx + dy*dy);
-
-        float force = uExplode * smoothstep(6.0, 0.0, dist);
-
-        pos.x += dx * force * 0.15;
-        pos.y += dy * force * 0.15;
-
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-        gl_PointSize = 3.0;
-      }
-    `,
-    fragmentShader: `
-      void main() {
-        float d = length(gl_PointCoord - vec2(0.5));
-        if (d > 0.5) discard;
-        gl_FragColor = vec4(0.2, 1.0, 1.0, 1.0);
-      }
-    `,
+    opacity: 0.9
   });
 
-  treePoints = new THREE.Points(geometry, treeMaterial);
-  scene.add(treePoints);
-
-  window.addEventListener("resize", onResize);
+  treeParticles = new THREE.Points(geometry, particleMaterial);
+  scene.add(treeParticles);
 }
 
-function onResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
+// ====== 動畫循環 ======
 function animate() {
   requestAnimationFrame(animate);
 
-  controls.update();
+  const t = clock.getElapsedTime();
 
-  treeMaterial.uniforms.uTime.value += 0.02;
-
-  // ----------------------------
-  // 手勢 → 3D 爆散控制
-  // ----------------------------
-  if (handPos) {
-    treeMaterial.uniforms.uHand.value.set(
-      (handPos.x - 0.5) * 2,     // 映射到 -1 ~ 1
-      -(handPos.y - 0.5) * 2
-    );
-
-    // 手靠近 → 爆散啟動
-    treeMaterial.uniforms.uExplode.value += 0.05;
-    if (treeMaterial.uniforms.uExplode.value > 1) {
-      treeMaterial.uniforms.uExplode.value = 1;
-    }
-  } else {
-    // 手離開 → 慢慢復原
-    treeMaterial.uniforms.uExplode.value -= 0.03;
-    if (treeMaterial.uniforms.uExplode.value < 0) {
-      treeMaterial.uniforms.uExplode.value = 0;
-    }
-  }
+  treeParticles.rotation.y = t * 0.1;
 
   renderer.render(scene, camera);
+  controls.update();
 }
+
+// ====== 啟動 ======
+init();
+
+// ====== 手勢資料接收（之後接 MediaPipe） ======
+window.handPos = null; // 預留給手勢腳本寫入
