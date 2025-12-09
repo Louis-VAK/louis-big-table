@@ -1,49 +1,47 @@
-export let handPos = null;
+window.handPos = null;
 
-// MediaPipe Hands
-import { Hands } from "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
-import { Camera } from "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
+let videoEl = null;
+let hands = null;
 
-let videoEl;
-
-export async function startHandTracking() {
+// 啟動手勢追蹤
+window.startHandTracking = async function () {
   videoEl = document.createElement("video");
   videoEl.setAttribute("playsinline", "");
   videoEl.style.display = "none";
   document.body.appendChild(videoEl);
 
-  const hands = new Hands({
-    locateFile: file =>
-      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  hands = new Hands({
+    locateFile: (file) =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
   });
 
   hands.setOptions({
     maxNumHands: 1,
-    modelComplexity: 0,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5
+    modelComplexity: 1,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.5,
   });
 
-  hands.onResults(results => {
-    if (
-      !results.multiHandLandmarks ||
-      results.multiHandLandmarks.length === 0
-    ) {
-      handPos = null;
-      return;
-    }
-
-    const p = results.multiHandLandmarks[0][9]; // index MCP
-    handPos = { x: p.x, y: p.y };
-  });
+  hands.onResults(onResults);
 
   const camera = new Camera(videoEl, {
     onFrame: async () => {
       await hands.send({ image: videoEl });
     },
     width: 640,
-    height: 480
+    height: 480,
   });
 
   await camera.start();
+};
+
+function onResults(results) {
+  if (!results.multiHandLandmarks?.length) {
+    handPos = null;
+    return;
+  }
+
+  // 取食指 MCP（穩定）
+  const pt = results.multiHandLandmarks[0][9];
+  handPos = { x: pt.x, y: pt.y };
 }
