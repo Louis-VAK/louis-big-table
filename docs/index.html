@@ -1,26 +1,52 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Gesture Christmas Tree</title>
+// docs/hand.js
+export let handPos = null;
 
-  <!-- MediaPipe Hands（穩定版本 CDN） -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+let videoEl = null;
+let hands = null;
+let camera = null;
 
-  <link rel="stylesheet" href="./style.css" />
-</head>
-<body>
+export async function startHandTracking() {
+  videoEl = document.createElement("video");
+  videoEl.setAttribute("playsinline", "");
+  videoEl.style.display = "none";
+  document.body.appendChild(videoEl);
 
-  <!-- 手勢啟動按鈕 -->
-  <button id="startBtn">Start Interaction</button>
+  // use global Hands from the loaded CDN script
+  hands = new Hands({
+    locateFile: (file) =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+  });
 
-  <!-- 主畫布 -->
-  <canvas id="scene"></canvas>
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.5,
+  });
 
-  <!-- 主程式（ES Modules） -->
-  <script type="module" src="./main.js"></script>
+  hands.onResults(onResults);
 
-</body>
-</html>
+  // use global Camera from the loaded CDN script
+  camera = new Camera(videoEl, {
+    onFrame: async () => {
+      await hands.send({ image: videoEl });
+    },
+    width: 640,
+    height: 480,
+  });
+
+  await camera.start();
+}
+
+function onResults(results) {
+  if (
+    !results.multiHandLandmarks ||
+    results.multiHandLandmarks.length === 0
+  ) {
+    handPos = null;
+    return;
+  }
+
+  const p = results.multiHandLandmarks[0][9]; // index finger MCP
+  handPos = { x: p.x, y: p.y };
+}
