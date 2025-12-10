@@ -4,14 +4,15 @@
 // ---------------------------------------------------
 
 const SPRITE_COUNT = 6;
-const MIN_DISTANCE = 0.20;    // Q2：圖片最小間距
+const MIN_DISTANCE = 0.20; // 問題 2：你選的 C 值（0.20）
+
 let sprites = [];
 let zoomLocked = false;
 let lastOkTime = 0;
-const OK_COOLDOWN = 600;      // 避免 OK 手勢太敏感（0.6 秒）
+const OK_COOLDOWN = 600;
 
 // ---------------------------------------------------
-// 🎨 載入圖片至 Sprites
+// 🎨 載入圖片
 // ---------------------------------------------------
 function createOrnaments(scene) {
   const loader = new THREE.TextureLoader();
@@ -22,12 +23,12 @@ function createOrnaments(scene) {
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
     const sp = new THREE.Sprite(mat);
 
-    sp.scale.set(0.18, 0.18, 1); // 小圖大小（保留你現在的設定）
+    sp.scale.set(0.18, 0.18, 1); // 保留你現在的小圖比例
 
-    // 隨機放在樹身上（靠近樹心）
+    // 隨機掛在樹中心附近
     const angle = Math.random() * Math.PI * 2;
-    const y = Math.random() * 2 - 1; 
-    const r = 0.3 + Math.random() * 0.2; // 稍微靠近中心
+    const y = Math.random() * 2 - 1;
+    const r = 0.3 + Math.random() * 0.2;
 
     sp.position.set(
       Math.cos(angle) * r,
@@ -44,7 +45,7 @@ function createOrnaments(scene) {
 }
 
 // ---------------------------------------------------
-// ✋ 偵測 OK 手勢（簡化版：靠近中心即視為 OK）
+// ✋ 偵測 OK
 // ---------------------------------------------------
 function isOkGesture(hand) {
   if (!hand) return false;
@@ -52,7 +53,6 @@ function isOkGesture(hand) {
   const now = performance.now();
   if (now - lastOkTime < OK_COOLDOWN) return false;
 
-  // 檢查手是否非常接近中心（x,y 介於 0.45~0.55）
   const nearCenter =
     Math.abs(hand.x - 0.5) < 0.08 &&
     Math.abs(hand.y - 0.5) < 0.08;
@@ -65,26 +65,29 @@ function isOkGesture(hand) {
 }
 
 // ---------------------------------------------------
-// 🎮 更新飾品（圖片散開 + OK 手勢放大）
+// 🎮 更新飾品（散開 + 距離保持 + 放大）
 // ---------------------------------------------------
-function updateOrnaments(explosion, handPos) {
-  // explosion 來自 main.js（與粒子同步）
-  let scaleSmall = 0.18;
-  let scaleBig = 0.55; // 你覺得剛好的放大比例（保留原設定）
+function updateOrnaments(explosion, handPos, frameCount) {
+  let factor = 1;
 
-  // 1. OK 手勢 → 切換縮放鎖定
+  // ⭐ 初始幀不散開（防止圖片飛走）
+  if (frameCount > 15) {
+    factor = 1 + explosion * 0.8; // 問題 1：你選的 B（80%）
+  }
+
+  const scaleSmall = 0.18;
+  const scaleBig = 0.55; // 你說保持現行效果
+
+  // OK 手勢切換
   if (isOkGesture(handPos)) {
     zoomLocked = !zoomLocked;
   }
 
-  // 2. 散開基本邏輯（跟粒子同步，但係數 = 0.8）
-  const factor = 1 + explosion * 0.8;
-
-  // 3. 更新每張圖片
+  // 1. 散開
   sprites.forEach((sp) => {
     sp.position.multiplyScalar(factor);
 
-    // 若正在放大模式
+    // 放大/縮小
     if (zoomLocked) {
       sp.scale.set(scaleBig, scaleBig, 1);
     } else {
@@ -92,9 +95,7 @@ function updateOrnaments(explosion, handPos) {
     }
   });
 
-  // ---------------------------------------------------
-  // 🧲 圖片避免互相重疊（最小距離 MIN_DISTANCE）
-  // ---------------------------------------------------
+  // 2. 保持圖片距離
   for (let i = 0; i < sprites.length; i++) {
     for (let j = i + 1; j < sprites.length; j++) {
       const A = sprites[i];
@@ -103,7 +104,6 @@ function updateOrnaments(explosion, handPos) {
       const dx = A.position.x - B.position.x;
       const dy = A.position.y - B.position.y;
       const dz = A.position.z - B.position.z;
-
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
       if (dist < MIN_DISTANCE) {
@@ -121,6 +121,5 @@ function updateOrnaments(explosion, handPos) {
   }
 }
 
-// ---------------------------------------------------
 window.createOrnaments = createOrnaments;
 window.updateOrnaments = updateOrnaments;
