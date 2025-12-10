@@ -1,6 +1,9 @@
 window.handData = {
-  pos: null,
-  gesture: null,
+  palmOpenFrames: 0,
+  pushFrames: 0,
+  x: 0,
+  y: 0,
+  z: -0.5,
 };
 
 function startHandTracking() {
@@ -10,7 +13,7 @@ function startHandTracking() {
   document.body.appendChild(video);
 
   const hands = new Hands({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+    locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
   });
 
   hands.setOptions({
@@ -20,52 +23,46 @@ function startHandTracking() {
     minTrackingConfidence: 0.5,
   });
 
-  hands.onResults((res) => {
-    if (!res.multiHandLandmarks || res.multiHandLandmarks.length === 0) {
-      window.handData.pos = null;
-      window.handData.gesture = null;
-      return;
-    }
+  hands.onResults(onHandResults);
 
-    const lm = res.multiHandLandmarks[0];
-    // 手掌中心（掌根）
-    const palm = lm[0];
-    window.handData.pos = { x: palm.x, y: palm.y };
-
-    // 手勢判定
-    const thumbTip = lm[4].y;
-    const indexTip = lm[8].y;
-    const pinkyTip = lm[20].y;
-
-    // Palm Open：所有指尖高於掌心
-    if (
-      lm[8].y < palm.y &&
-      lm[12].y < palm.y &&
-      lm[16].y < palm.y &&
-      lm[20].y < palm.y
-    ) {
-      window.handData.gesture = "PALM";
-    }
-    // Fist：所有指尖低於掌心
-    else if (
-      lm[8].y > palm.y &&
-      lm[12].y > palm.y &&
-      lm[16].y > palm.y &&
-      lm[20].y > palm.y
-    ) {
-      window.handData.gesture = "FIST";
-    } else {
-      window.handData.gesture = null;
-    }
-  });
-
-  const cam = new Camera(video, {
+  const camera = new Camera(video, {
     onFrame: async () => {
       await hands.send({ image: video });
     },
-    width: 640,
-    height: 480,
+    width: 640, height: 480,
   });
 
-  cam.start();
+  camera.start();
+}
+
+function onHandResults(results) {
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    window.handData.palmOpenFrames = 0;
+    window.handData.pushFrames = 0;
+    return;
+  }
+
+  const pts = results.multiHandLandmarks[0];
+  const mcp = pts[9];
+  const z = pts[9].z;
+
+  window.handData.x = mcp.x;
+  window.handData.y = mcp.y;
+  window.handData.z = z;
+
+  const dist1 = distance(pts[4], pts[8]);
+  const dist2 = distance(pts[12], pts[0]);
+
+  const palmOpen = dist1 > 0.13 && dist2 > 0.25;
+  const pushing = z > -0.1;
+
+  if (palmOpen) window.handData.palmOpenFrames++;
+  else window.handData.palmOpenFrames = 0;
+
+  if (pushing) window.handData.pushFrames++;
+  else window.handData.pushFrames = 0;
+}
+
+function distance(a, b) {
+  return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2);
 }
