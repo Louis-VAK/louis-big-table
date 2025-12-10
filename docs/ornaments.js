@@ -5,8 +5,8 @@ function createOrnaments(scene) {
   const textureLoader = new THREE.TextureLoader();
 
   const textures = [
-    "assets/1.jpg", "assets/2.jpg", "assets/3.jpg",
-    "assets/4.jpg", "assets/5.jpg", "assets/6.jpg",
+    "assets/img1.png", "assets/img2.png", "assets/img3.png",
+    "assets/img4.png", "assets/img5.png", "assets/img6.png",
   ].map(src => textureLoader.load(src));
 
   const ornaments = textures.map(tex => {
