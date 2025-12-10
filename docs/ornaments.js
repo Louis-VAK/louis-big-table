@@ -9,7 +9,9 @@ let zoomLocked = false;
 let lastOk = 0;
 const OK_COOLDOWN = 600;
 
-// -------------------------
+let lockedSprite = null;
+
+// ---------------------------------------------------
 function createOrnaments(scene) {
   const loader = new THREE.TextureLoader();
   const group = new THREE.Group();
@@ -23,12 +25,19 @@ function createOrnaments(scene) {
 
     sp.scale.set(0.18, 0.18, 1);
 
-    // 初始位置（靠近中心 → 不會飛走）
+    // ⭐ 初始位置（靠近中心）
     const angle = Math.random() * Math.PI * 2;
     const y = Math.random() * 2 - 1;
     const r = 0.28;
 
-    sp.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
+    const basePos = new THREE.Vector3(
+      Math.cos(angle) * r,
+      y,
+      Math.sin(angle) * r
+    );
+
+    sp.userData.basePos = basePos.clone();
+    sp.position.copy(basePos);
 
     sprites.push(sp);
     group.add(sp);
@@ -38,14 +47,18 @@ function createOrnaments(scene) {
   return group;
 }
 
-// -------------------------
+// ---------------------------------------------------
 function isOkGesture(hand) {
   if (!hand) return false;
 
   const now = performance.now();
   if (now - lastOk < OK_COOLDOWN) return false;
 
-  if (Math.abs(hand.x - 0.5) < 0.08 && Math.abs(hand.y - 0.5) < 0.08) {
+  const nearCenter =
+    Math.abs(hand.x - 0.5) < 0.08 &&
+    Math.abs(hand.y - 0.5) < 0.08;
+
+  if (nearCenter) {
     lastOk = now;
     return true;
   }
@@ -53,60 +66,72 @@ function isOkGesture(hand) {
   return false;
 }
 
-// -------------------------
-function updateOrnaments(explosion, hand, hasHand) {
-
-  // ⭐ 若尚未偵測到手 → 圖片完全不爆散、不動
+// ---------------------------------------------------
+function updateOrnaments(explosion, hand, hasHand, tree) {
+  // ⭐ 無手 → 完全不動
   if (!hasHand) {
     sprites.forEach(sp => sp.scale.set(0.18, 0.18, 1));
     return;
   }
 
-  // OK 手勢切換放大
+  // ⭐ OK → 切換鎖定模式
   if (isOkGesture(hand)) {
     zoomLocked = !zoomLocked;
+    lockedSprite = null; // 重置，之後再重新選
   }
 
+  // ⭐ 計算爆散係數
   const factor = 1 + explosion * 0.8;
 
-  sprites.forEach(sp => {
-    sp.position.multiplyScalar(factor);
+  // ⭐ 若未鎖定 → 正常「相簿模式」
+  if (!zoomLocked) {
+    tree.material.transparent = true;
+    tree.material.opacity = 1.0;
 
-    if (zoomLocked) {
-      sp.scale.set(0.55, 0.55, 1);
-    } else {
+    sprites.forEach(sp => {
+      const explodedPos = sp.userData.basePos.clone().multiplyScalar(factor);
+      sp.position.copy(explodedPos);
+      sp.scale.set(0.18, 0.18, 1);
+    });
+
+    return;
+  }
+
+  // ⭐ 鎖定模式（檢視照片）
+
+  // 樹淡出
+  tree.material.transparent = true;
+  tree.material.opacity = 0.3;
+
+  // 若還沒選到圖片 → 選距離樹 Z 軸最近的那一張
+  if (!lockedSprite) {
+    let minDist = Infinity;
+
+    sprites.forEach(sp => {
+      const d = Math.sqrt(
+        sp.position.x * sp.position.x +
+        sp.position.z * sp.position.z
+      );
+
+      if (d < minDist) {
+        minDist = d;
+        lockedSprite = sp;
+      }
+    });
+  }
+
+  // ⭐ 放大選中的圖片並移到鏡頭前
+  lockedSprite.scale.set(0.55, 0.55, 1);
+  lockedSprite.position.set(0, 0, 1.8);
+
+  // ⭐ 其他圖片縮回樹上
+  sprites.forEach(sp => {
+    if (sp !== lockedSprite) {
+      const explodedPos = sp.userData.basePos.clone().multiplyScalar(factor);
+      sp.position.copy(explodedPos);
       sp.scale.set(0.18, 0.18, 1);
     }
   });
-
-  // 距離分離
-  for (let i = 0; i < sprites.length; i++) {
-    for (let j = i + 1; j < sprites.length; j++) {
-      const A = sprites[i];
-      const B = sprites[j];
-
-      const dx = A.position.x - B.position.x;
-      const dy = A.position.y - B.position.y;
-      const dz = A.position.z - B.position.z;
-
-      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-
-      if (dist < MIN_DISTANCE) {
-        const push = (MIN_DISTANCE - dist) * 0.5;
-        const ux = dx / dist;
-        const uy = dy / dist;
-        const uz = dz / dist;
-
-        A.position.x += ux * push;
-        A.position.y += uy * push;
-        A.position.z += uz * push;
-
-        B.position.x -= ux * push;
-        B.position.y -= uy * push;
-        B.position.z -= uz * push;
-      }
-    }
-  }
 }
 
 window.createOrnaments = createOrnaments;
