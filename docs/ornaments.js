@@ -1,49 +1,55 @@
 function createOrnaments(scene) {
-  const loader = new THREE.TextureLoader();
-
-  const images = [
-    "./assets/img1.png",
-    "./assets/img2.png",
-    "./assets/img3.png",
-    "./assets/img4.png",
-    "./assets/img5.png",
-    "./assets/img6.png",
-  ];
-
   const group = new THREE.Group();
   scene.add(group);
 
-  const ornaments = [];
+  const textureLoader = new THREE.TextureLoader();
 
-  images.forEach((img, i) => {
-    const tex = loader.load(img);
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-    const sprite = new THREE.Sprite(mat);
+  const textures = [
+    "assets/1.jpg", "assets/2.jpg", "assets/3.jpg",
+    "assets/4.jpg", "assets/5.jpg", "assets/6.jpg",
+  ].map(src => textureLoader.load(src));
 
-    // A 模式：自然分布位置
-    sprite.position.set(
-      (Math.random() - 0.5) * 1.6, 
-      Math.random() * 1.8 - 0.2,
-      Math.random() * 0.8 - 0.4
-    );
-
-    sprite.scale.set(0.25, 0.25, 1);
-    group.add(sprite);
-
-    ornaments.push(sprite);
+  const ornaments = textures.map(tex => {
+    const geo = new THREE.PlaneGeometry(0.22, 0.22);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+    const mesh = new THREE.Mesh(geo, mat);
+    group.add(mesh);
+    return mesh;
   });
 
   return { group, ornaments };
 }
 
-// ----------------- 相簿模式（水平圓環排列） -----------------
-function layoutGallery(ornaments, R = 2.3, scale = 1.0) {
-  const N = ornaments.length;
+function updateOrnamentsA(ornaments, explosionLevel) {
+  ornaments.forEach((m, i) => {
+    const angle = (i / ornaments.length) * Math.PI * 2;
+    const r = 0.8 + explosionLevel * 0.4;
 
-  ornaments.forEach((sp, i) => {
-    const angle = (i / N) * Math.PI * 2;
+    m.position.set(
+      Math.cos(angle) * r,
+      -0.4 + Math.sin(angle * 2) * 0.25,
+      Math.sin(angle) * r
+    );
 
-    sp.position.set(Math.cos(angle) * R, 0, Math.sin(angle) * R);
-    sp.scale.set(scale, scale, 1);
+    m.scale.set(
+      1 + explosionLevel * 0.5,
+      1 + explosionLevel * 0.5,
+      1
+    );
+  });
+}
+
+function updateOrnamentsB(ornaments, rotationY) {
+  const radius = 1.8;
+  ornaments.forEach((m, i) => {
+    const angle = rotationY + (i / ornaments.length) * Math.PI * 2;
+
+    m.position.set(
+      Math.cos(angle) * radius,
+      0,
+      Math.sin(angle) * radius
+    );
+
+    m.scale.set(0.55, 0.55, 1); // B 模組圖片放大 ×2
   });
 }
