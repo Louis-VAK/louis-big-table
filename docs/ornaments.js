@@ -1,49 +1,28 @@
+// ornaments.js — 建立相簿（不負責動畫）
+
 function createOrnaments(scene) {
-  const loader = new THREE.TextureLoader();
+    const group = new THREE.Group();
+    const loader = new THREE.TextureLoader();
 
-  const images = [
-    "./assets/img1.png",
-    "./assets/img2.png",
-    "./assets/img3.png",
-    "./assets/img4.png",
-    "./assets/img5.png",
-    "./assets/img6.png",
-  ];
+    const numImages = 8;
+    const radius = 4;
 
-  const group = new THREE.Group();
-  scene.add(group);
+    for (let i = 1; i <= numImages; i++) {
+        const tex = loader.load(`assets/${i}.png`);
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+        const geo = new THREE.PlaneGeometry(2, 2);
 
-  const ornaments = [];
+        const mesh = new THREE.Mesh(geo, mat);
 
-  images.forEach((img, i) => {
-    const tex = loader.load(img);
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-    const sprite = new THREE.Sprite(mat);
+        const angle = (i / numImages) * Math.PI * 2;
+        mesh.position.set(Math.cos(angle) * radius, 2.5, Math.sin(angle) * radius);
+        mesh.lookAt(0, 2.5, 0);
 
-    // A 模式：自然分布位置
-    sprite.position.set(
-      (Math.random() - 0.5) * 1.6, 
-      Math.random() * 1.8 - 0.2,
-      Math.random() * 0.8 - 0.4
-    );
+        group.add(mesh);
+    }
 
-    sprite.scale.set(0.25, 0.25, 1);
-    group.add(sprite);
+    group.visible = false; // 預設不顯示
+    scene.add(group);
 
-    ornaments.push(sprite);
-  });
-
-  return { group, ornaments };
-}
-
-// ----------------- 相簿模式（水平圓環排列） -----------------
-function layoutGallery(ornaments, R = 2.3, scale = 1.0) {
-  const N = ornaments.length;
-
-  ornaments.forEach((sp, i) => {
-    const angle = (i / N) * Math.PI * 2;
-
-    sp.position.set(Math.cos(angle) * R, 0, Math.sin(angle) * R);
-    sp.scale.set(scale, scale, 1);
-  });
+    return group;
 }
