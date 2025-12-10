@@ -23,28 +23,61 @@ const { group: ornamentGroup, ornaments } = createOrnaments(scene);
 let MODE = "TREE"; // TREE / GALLERY
 let galleryRotation = 0;
 
+// Palm / Fist debounce counters
+let palmCount = 0;
+let fistCount = 0;
+
+// 啟動後 1 秒內不接受模式切換
+let lockUntil = 0;
+
 // ------------------ Button ------------------
-document.getElementById("startBtn").onclick = () => startHandTracking();
+document.getElementById("startBtn").onclick = () => {
+  startHandTracking();
+  lockUntil = performance.now() + 1000; // 1 秒保護期間
+};
 
 // ------------------ Animation Loop ------------------
 function animate() {
   requestAnimationFrame(animate);
 
+  const now = performance.now();
   const hd = window.handData;
   let hand = hd?.pos;
 
-  // ============== A 模組（TREE） =================
+  // ============================================================
+  //  手勢穩定偵測（0.5 秒 Palm / 0.3 秒 Fist）
+  // ============================================================
+  if (hd.gesture === "PALM") {
+    palmCount++;
+    fistCount = 0;
+  } else if (hd.gesture === "FIST") {
+    fistCount++;
+    palmCount = 0;
+  } else {
+    palmCount = 0;
+    fistCount = 0;
+  }
+
+  const PALM_STABLE = palmCount > 15; // Palm 0.5 秒
+  const FIST_STABLE = fistCount > 10; // Fist 0.3 秒
+
+
+  // ============================================================
+  //  A 模組（樹 + 掛飾）
+  // ============================================================
   if (MODE === "TREE") {
 
-    // Palm Open → 切換相簿模式
-    if (hd.gesture === "PALM") {
+    // ------ Palm Open 切換到 B 模組 --------
+    if (PALM_STABLE && now > lockUntil) {
       MODE = "GALLERY";
-      layoutGallery(ornaments, 2.3, 1.0); // 放大 4x（scale=1）
+      lockUntil = now + 800; // 切換後再加 0.8 秒安全期
+
+      layoutGallery(ornaments, 2.3, 2.0); // ⭐ 改成 2 倍大
       tree.material.opacity = 0.15;
       tree.material.transparent = true;
     }
 
-    // 旋轉
+    // 旋轉樹 & 掛飾
     if (hand) {
       tree.rotation.y = (hand.x - 0.5) * 3;
       ornamentGroup.rotation.y = tree.rotation.y;
@@ -55,49 +88,40 @@ function animate() {
     let explosion = Math.pow(dist, 2.2) * 3.5;
 
     for (let i = 0; i < pos.length; i += 3) {
-      pos[i] = original[i] * (1 + explosion);
+      pos[i]     = original[i]     * (1 + explosion);
       pos[i + 1] = original[i + 1] * (1 + explosion);
       pos[i + 2] = original[i + 2] * (1 + explosion);
     }
 
     geom.attributes.position.needsUpdate = true;
 
-    // 掛飾微爆散
     ornaments.forEach((sp) => {
       sp.position.multiplyScalar(1 + explosion * 0.15);
     });
   }
 
-  // ============== B 模組（GALLERY） =================
+  // ============================================================
+  //  B 模組（相簿模式）
+  // ============================================================
   else if (MODE === "GALLERY") {
-    // Fist → 回 TREE 模式
-    if (hd.gesture === "FIST") {
+
+    // -------- FIST → 回到 TREE 模式 --------
+    if (FIST_STABLE && now > lockUntil) {
       MODE = "TREE";
+      lockUntil = now + 800;
+
       tree.material.opacity = 1.0;
-      layoutNormal(); // 還原掛飾位置（我會在下方補）
+      layoutNormal();
     }
 
-    // 左右旋轉相簿
+    // 左右移動控制相簿旋轉
     if (hand) {
       galleryRotation = (hand.x - 0.5) * 2;
+      ornamentGroup.rotation.y += galleryRotation * 0.02;
     }
-
-    ornamentGroup.rotation.y += galleryRotation * 0.02;
   }
 
   renderer.render(scene, camera);
 }
 
 animate();
-
-// ------------------ 掛飾回復 A 模式位置 ------------------
-function layoutNormal() {
-  ornaments.forEach((sp) => {
-    sp.scale.set(0.25, 0.25, 1);
-    sp.position.set(
-      (Math.random() - 0.5) * 1.6,
-      Math.random() * 1.8 - 0.2,
-      Math.random() * 0.8 - 0.4
-    );
-  });
-}
