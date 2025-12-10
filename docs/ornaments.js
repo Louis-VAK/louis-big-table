@@ -1,100 +1,126 @@
 // ornaments.js
-// ⭐ 飾品系統：貼在樹表面、隨樹旋轉、OK 手勢可放大圖片
+// ---------------------------------------------------
+// 🎄 聖誕樹飾品系統（圖片 Sprite）
+// ---------------------------------------------------
 
-const ORNAMENT_COUNT = 10; 
-const ORNAMENT_IMAGES = [
-  "./assets/img1.png",
-  "./assets/img2.png",
-  "./assets/img3.png",
-  "./assets/img4.png",
-  "./assets/img5.png",
-  "./assets/img6.png"
-];
+const SPRITE_COUNT = 6;
+const MIN_DISTANCE = 0.20;    // Q2：圖片最小間距
+let sprites = [];
+let zoomLocked = false;
+let lastOkTime = 0;
+const OK_COOLDOWN = 600;      // 避免 OK 手勢太敏感（0.6 秒）
 
-let ornaments = [];
-let enlargedIndex = null; // ⭐ 目前放大的飾品
+// ---------------------------------------------------
+// 🎨 載入圖片至 Sprites
+// ---------------------------------------------------
+function createOrnaments(scene) {
+  const loader = new THREE.TextureLoader();
+  const group = new THREE.Group();
 
-// -------------------------------------------------------
-// 🎄 初始化飾品：和樹一起建立（一次性）
-// -------------------------------------------------------
-function createOrnaments(scene, treeGeometry) {
-  const pos = treeGeometry.attributes.position.array;
+  for (let i = 1; i <= SPRITE_COUNT; i++) {
+    const tex = loader.load(`./assets/img${i}.png`);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sp = new THREE.Sprite(mat);
 
-  for (let i = 0; i < ORNAMENT_COUNT; i++) {
-    const spriteMap = new THREE.TextureLoader().load(
-      ORNAMENT_IMAGES[i % ORNAMENT_IMAGES.length]
+    sp.scale.set(0.18, 0.18, 1); // 小圖大小（保留你現在的設定）
+
+    // 隨機放在樹身上（靠近樹心）
+    const angle = Math.random() * Math.PI * 2;
+    const y = Math.random() * 2 - 1; 
+    const r = 0.3 + Math.random() * 0.2; // 稍微靠近中心
+
+    sp.position.set(
+      Math.cos(angle) * r,
+      y,
+      Math.sin(angle) * r
     );
 
-    const mat = new THREE.SpriteMaterial({
-      map: spriteMap,
-      transparent: true,
-      opacity: 0.85
-    });
-
-    const sprite = new THREE.Sprite(mat);
-
-    // ⭐ 從樹的粒子中挑一個位置掛上飾品
-    const idx = Math.floor(Math.random() * (pos.length / 3)) * 3;
-
-    sprite.position.set(pos[idx], pos[idx + 1], pos[idx + 2]);
-
-    sprite.scale.set(0.15, 0.15, 0.15); // 初始：非常小
-
-    scene.add(sprite);
-    ornaments.push(sprite);
-  }
-}
-
-// -------------------------------------------------------
-// 🎁 飾品動畫（隨樹旋轉 + 爆散微放大）
-// -------------------------------------------------------
-function updateOrnaments(explosionStrength, treeRotationY) {
-  ornaments.forEach((sprite, i) => {
-
-    if (enlargedIndex === i) {
-      // ⭐ 已進入 OK 手勢放大 → 不受樹動畫影響
-      return;
-    }
-
-    // 🔄 跟著樹轉
-    sprite.parent.rotation.y = treeRotationY;
-
-    // 🎉 爆散時微微放大
-    const s = 0.15 + explosionStrength * 0.25;
-    sprite.scale.set(s, s, s);
-  });
-}
-
-// -------------------------------------------------------
-// 👌 OK 手勢 → 放大最近的飾品
-// -------------------------------------------------------
-function enlargeClosestOrnament(camera) {
-  if (enlargedIndex !== null) {
-    // 若已有放大的 → 還原全部
-    ornaments.forEach((o) => o.scale.set(0.15, 0.15, 0.15));
-    enlargedIndex = null;
-    return;
+    group.add(sp);
+    sprites.push(sp);
   }
 
-  let closest = -1;
-  let closestDist = Infinity;
+  scene.add(group);
+  return group;
+}
 
-  ornaments.forEach((o, idx) => {
-    const d = o.position.distanceTo(camera.position);
-    if (d < closestDist) {
-      closest = idx;
-      closestDist = d;
+// ---------------------------------------------------
+// ✋ 偵測 OK 手勢（簡化版：靠近中心即視為 OK）
+// ---------------------------------------------------
+function isOkGesture(hand) {
+  if (!hand) return false;
+
+  const now = performance.now();
+  if (now - lastOkTime < OK_COOLDOWN) return false;
+
+  // 檢查手是否非常接近中心（x,y 介於 0.45~0.55）
+  const nearCenter =
+    Math.abs(hand.x - 0.5) < 0.08 &&
+    Math.abs(hand.y - 0.5) < 0.08;
+
+  if (nearCenter) {
+    lastOkTime = now;
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------
+// 🎮 更新飾品（圖片散開 + OK 手勢放大）
+// ---------------------------------------------------
+function updateOrnaments(explosion, handPos) {
+  // explosion 來自 main.js（與粒子同步）
+  let scaleSmall = 0.18;
+  let scaleBig = 0.55; // 你覺得剛好的放大比例（保留原設定）
+
+  // 1. OK 手勢 → 切換縮放鎖定
+  if (isOkGesture(handPos)) {
+    zoomLocked = !zoomLocked;
+  }
+
+  // 2. 散開基本邏輯（跟粒子同步，但係數 = 0.8）
+  const factor = 1 + explosion * 0.8;
+
+  // 3. 更新每張圖片
+  sprites.forEach((sp) => {
+    sp.position.multiplyScalar(factor);
+
+    // 若正在放大模式
+    if (zoomLocked) {
+      sp.scale.set(scaleBig, scaleBig, 1);
+    } else {
+      sp.scale.set(scaleSmall, scaleSmall, 1);
     }
   });
 
-  if (closest >= 0) {
-    enlargedIndex = closest;
+  // ---------------------------------------------------
+  // 🧲 圖片避免互相重疊（最小距離 MIN_DISTANCE）
+  // ---------------------------------------------------
+  for (let i = 0; i < sprites.length; i++) {
+    for (let j = i + 1; j < sprites.length; j++) {
+      const A = sprites[i];
+      const B = sprites[j];
 
-    const o = ornaments[closest];
-    o.scale.set(2.5, 2.5, 2.5); // ⭐ 放大到螢幕一半
+      const dx = A.position.x - B.position.x;
+      const dy = A.position.y - B.position.y;
+      const dz = A.position.z - B.position.z;
+
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      if (dist < MIN_DISTANCE) {
+        const push = (MIN_DISTANCE - dist) * 0.5;
+
+        A.position.x += (dx / dist) * push;
+        A.position.y += (dy / dist) * push;
+        A.position.z += (dz / dist) * push;
+
+        B.position.x -= (dx / dist) * push;
+        B.position.y -= (dy / dist) * push;
+        B.position.z -= (dz / dist) * push;
+      }
+    }
   }
 }
 
+// ---------------------------------------------------
 window.createOrnaments = createOrnaments;
 window.updateOrnaments = updateOrnaments;
-window.enlargeClosestOrnament = enlargeClosestOrnament;
