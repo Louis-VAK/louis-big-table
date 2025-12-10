@@ -1,32 +1,44 @@
+// tree.js — 建立 3D 粒子樹（不負責動畫）
+
 function createTree(scene) {
-  const particleCount = 1800;
-  const geometry = new THREE.BufferGeometry();
-  const positions = [];
-  const original = [];
+    const group = new THREE.Group();
+    const geometry = new THREE.BufferGeometry();
 
-  for (let i = 0; i < particleCount; i++) {
-    const radius = Math.random() * 1.2 * (1 - i / particleCount);
-    const angle = Math.random() * Math.PI * 2;
-    const height = (i / particleCount) * 2.5;
+    const count = 2500;
+    const positions = new Float32Array(count * 3);
+    const originalPositions = [];
 
-    const x = radius * Math.cos(angle);
-    const z = radius * Math.sin(angle);
-    const y = height - 1;
+    for (let i = 0; i < count; i++) {
+        const level = Math.random();
+        const radius = (1 - level) * 3;
 
-    positions.push(x, y, z);
-    original.push(x, y, z);
-  }
+        const angle = Math.random() * Math.PI * 2;
+        const x = Math.cos(angle) * radius * (Math.random() * 0.3 + 0.7);
+        const y = level * 6;
+        const z = Math.sin(angle) * radius * (Math.random() * 0.3 + 0.7);
 
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.userData.originalPositions = original;
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
 
-  const material = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 0.03,
-    vertexColors: false,
-  });
+        originalPositions.push({ x, y, z });
+    }
 
-  const tree = new THREE.Points(geometry, material);
-  scene.add(tree);
-  return tree;
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+        size: 0.06,
+        color: 0x00ff88
+    });
+
+    const pointCloud = new THREE.Points(geometry, material);
+    group.add(pointCloud);
+
+    scene.add(group);
+
+    return {
+        group,
+        geometry,
+        originalPositions
+    };
 }
