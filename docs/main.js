@@ -1,6 +1,3 @@
-// -----------------------------------------------------
-// 基本場景設定（回到最穩定版本）
-// -----------------------------------------------------
 const canvas = document.getElementById("scene");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -8,117 +5,134 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#000");
 
-const camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  100
-);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 1.5, 5);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-// -----------------------------------------------------
-// 建立聖誕樹（100% 正常版）
-// -----------------------------------------------------
+// --------------------- Tree ---------------------
 const tree = createTree(scene);
 const geom = tree.geometry;
 const pos = geom.attributes.position.array;
 const original = geom.userData.originalPositions;
 
-// -----------------------------------------------------
-// 模式狀態
-// -----------------------------------------------------
-let mode = "A";  // A = 樹模式（預設） / B = 相簿模式
-let palmTimer = 0;
+// --------------------- Decorations ---------------------
+const { group: ornamentGroup, ornaments, ornamentOriginal } = createOrnaments(scene);
 
-// -----------------------------------------------------
-// 啟動手勢追蹤
-// -----------------------------------------------------
+// --------------------- State ---------------------
+let MODE = "TREE"; // TREE / GALLERY
+let lockUntil = 0;
+
+let palmCount = 0;
+let forwardCount = 0;
+
+// ---------------------
 document.getElementById("startBtn").onclick = () => {
-  startHandTracking();
+    startHandTracking();
+    lockUntil = performance.now() + 1200; // 啟動保護
 };
 
-// -----------------------------------------------------
-// A 模組：粒子旋轉 + 爆散（保持你的原本邏輯）
-// -----------------------------------------------------
-function updateAMode() {
-  // 左右旋轉（你原本的版本）
-  if (window.handPos) {
-    const tx = (window.handPos.x - 0.5) * 2;
-    tree.rotation.y = tx * 2.5;
-  }
-
-  // 爆散
-  let explosion = 0;
-  if (window.handPos) {
-    const dist = 1 - window.handPos.y;
-    explosion = Math.pow(dist, 2.2) * 3.2;
-  }
-
-  for (let i = 0; i < pos.length; i += 3) {
-    const ox = original[i];
-    const oy = original[i + 1];
-    const oz = original[i + 2];
-
-    pos[i]     = ox * (1 + explosion);
-    pos[i + 1] = oy * (1 + explosion);
-    pos[i + 2] = oz * (1 + explosion);
-  }
-
-  geom.attributes.position.needsUpdate = true;
-}
-
-// -----------------------------------------------------
-// B 模組（先留空，不影響 A 模組）
-// -----------------------------------------------------
-function updateBMode() {
-  // 目前先不上邏輯，避免破壞 A 模組
-  // 等 A 模組完全穩定再加相簿旋轉
-}
-
-// -----------------------------------------------------
-// 模式切換（保留你要求的條件）
-// -----------------------------------------------------
-function handleModeSwitch() {
-
-  // 只有在 A 模式才檢查是否切 B
-  if (mode === "A") {
-    if (window.handGesture === "palm") {
-      palmTimer += 0.016;
-      if (palmTimer > 0.4) {
-        mode = "B";
-        console.log(">>> 切換到 B 模組");
-      }
-    } else {
-      palmTimer = 0;
-    }
-  }
-
-  // B → A（手向前推）
-  if (mode === "B") {
-    if (window.handZ < 0.28) {
-      mode = "A";
-      console.log(">>> 切換回 A 模組");
-    }
-  }
-}
-
-// -----------------------------------------------------
-// 主動畫迴圈（100% 可執行、安全）
-// -----------------------------------------------------
+// =====================================================
+//                     ANIMATION
+// =====================================================
 function animate() {
-  requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
 
-  handleModeSwitch();
+    const now = performance.now();
+    const hd = window.handData;
+    const hand = hd?.pos;
+    const isPalm = hd?.gesture === "PALM";
+    const zVal = hd?.z ?? 0; // index finger Z
 
-  if (mode === "A") {
-    updateAMode();
-  } else {
-    updateBMode();
-  }
+    // ---------------------------
+    // 手勢統計（穩定偵測）
+    // ---------------------------
+    if (isPalm) {
+        palmCount++;
+    } else {
+        palmCount = 0;
+    }
 
-  renderer.render(scene, camera);
+    if (zVal < -0.25) { // 手往前推（接近相機）
+        forwardCount++;
+    } else {
+        forwardCount = 0;
+    }
+
+    const PALM_STABLE = palmCount >= 18;     // Palm open ~0.45秒
+    const FORWARD_STABLE = forwardCount >= 10; // Forward ~0.25秒
+
+
+    // =====================================================
+    //                    A 模組（TREE）
+    // =====================================================
+    if (MODE === "TREE") {
+
+        // Palm → 切到 B
+        if (PALM_STABLE && now > lockUntil) {
+            MODE = "GALLERY";
+            lockUntil = now + 800;
+
+            layoutGallery(ornaments, 2.3, 1.8);
+            tree.material.transparent = true;
+            tree.material.opacity = 0.12;
+        }
+
+        // ------ 手勢左右旋轉 ------
+        if (hand) {
+            const rot = (hand.x - 0.5) * 3;
+            tree.rotation.y = rot;
+            ornamentGroup.rotation.y = rot;
+        }
+
+        // ------ 粒子爆散 ------
+        let dist = hand ? 1 - hand.y : 0;
+        let explosion = Math.pow(dist, 2.2) * 3.0;
+
+        // 粒子更新
+        for (let i = 0; i < pos.length; i += 3) {
+            pos[i]     = original[i]     * (1 + explosion);
+            pos[i + 1] = original[i + 1] * (1 + explosion);
+            pos[i + 2] = original[i + 2] * (1 + explosion);
+        }
+        geom.attributes.position.needsUpdate = true;
+
+        // ------ 小圖片跟著爆散 ------
+        for (let i = 0; i < ornaments.length; i++) {
+            const sp = ornaments[i];
+            const base = ornamentOriginal[i];
+
+            sp.position.set(
+                base.x * (1 + explosion * 1.3),
+                base.y * (1 + explosion * 1.3),
+                base.z * (1 + explosion * 1.3)
+            );
+        }
+    }
+
+
+    // =====================================================
+    //                    B 模組（GALLERY）
+    // =====================================================
+    else if (MODE === "GALLERY") {
+
+        // 手左右 → 相簿旋轉
+        if (hand) {
+            const spin = (hand.x - 0.5) * 2;
+            ornamentGroup.rotation.y += spin * 0.02;
+        }
+
+        // 手往前推 → 回 A 模組
+        if (FORWARD_STABLE && now > lockUntil) {
+            MODE = "TREE";
+            lockUntil = now + 800;
+
+            layoutNormal(ornaments, ornamentOriginal);
+            tree.material.opacity = 1.0;
+        }
+    }
+
+    renderer.render(scene, camera);
 }
 
 animate();
