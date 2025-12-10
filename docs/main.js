@@ -1,3 +1,6 @@
+// main.js
+// --------------------------------------------------
+
 const canvas = document.getElementById("scene");
 
 // Renderer
@@ -34,7 +37,12 @@ const original = geom.userData.originalPositions;
 const ornamentGroup = createOrnaments(scene);
 
 // -------------------------
-// 🖐︎ 啟動手勢
+// 🎬 初始幀保護：前 15 幀不套用爆散
+// -------------------------
+let frameCount = 0;
+
+// -------------------------
+// ✋ 啟動手勢
 // -------------------------
 document.getElementById("startBtn").onclick = () => {
   startHandTracking();
@@ -46,7 +54,9 @@ document.getElementById("startBtn").onclick = () => {
 function animate() {
   requestAnimationFrame(animate);
 
-  // 1. 左右旋轉
+  frameCount++;
+
+  // 1. 左右旋轉控制
   let explosion = 0;
 
   if (window.handPos) {
@@ -55,23 +65,35 @@ function animate() {
 
     // 手越高 → 爆散越強
     const dist = 1 - window.handPos.y;
+
     explosion = Math.pow(dist, 2.2) * 3.5;
   }
 
-  // 2. 粒子爆散
+  // -------------------------
+  // 2. 粒子爆散（含初始幀保護）
+  // -------------------------
+  let factor = 1;
+
+  if (frameCount > 15) {
+    factor = 1 + explosion;
+  }
+
   for (let i = 0; i < pos.length; i += 3) {
     const ox = original[i];
     const oy = original[i + 1];
     const oz = original[i + 2];
 
-    pos[i]     = ox * (1 + explosion);
-    pos[i + 1] = oy * (1 + explosion);
-    pos[i + 2] = oz * (1 + explosion);
+    pos[i]     = ox * factor;
+    pos[i + 1] = oy * factor;
+    pos[i + 2] = oz * factor;
   }
+
   geom.attributes.position.needsUpdate = true;
 
-  // 3. 更新飾品邏輯（散開 + OK 手勢）
-  updateOrnaments(explosion, window.handPos);
+  // -------------------------
+  // 3. 更新飾品（爆散 + OK 手勢放大）
+  // -------------------------
+  updateOrnaments(explosion, window.handPos, frameCount);
 
   renderer.render(scene, camera);
 }
