@@ -1,138 +1,102 @@
-const canvas = document.getElementById("scene");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+// main.js — 控制模式、動畫、旋轉、爆散、相簿切換
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color("#000");
+let scene, camera, renderer, controls;
+let tree, album;
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 1.5, 5);
+let mode = "tree"; // "tree" | "album"
+let explode = 0;   // 爆散係數
 
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+init();
+animate();
 
-// --------------------- Tree ---------------------
-const tree = createTree(scene);
-const geom = tree.geometry;
-const pos = geom.attributes.position.array;
-const original = geom.userData.originalPositions;
+function init() {
+    scene = new THREE.Scene();
 
-// --------------------- Decorations ---------------------
-const { group: ornamentGroup, ornaments, ornamentOriginal } = createOrnaments(scene);
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 3, 12);
 
-// --------------------- State ---------------------
-let MODE = "TREE"; // TREE / GALLERY
-let lockUntil = 0;
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
 
-let palmCount = 0;
-let forwardCount = 0;
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
 
-// ---------------------
-document.getElementById("startBtn").onclick = () => {
-    startHandTracking();
-    lockUntil = performance.now() + 1200; // 啟動保護
-};
+    tree = createTree(scene);
+    album = createOrnaments(scene);
 
-// =====================================================
-//                     ANIMATION
-// =====================================================
+    const video = document.getElementById("video");
+    initHandTracking(video);
+
+    window.addEventListener("resize", onResize);
+}
+
+function onResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
-    const now = performance.now();
-    const hd = window.handData;
-    const hand = hd?.pos;
-    const isPalm = hd?.gesture === "PALM";
-    const zVal = hd?.z ?? 0; // index finger Z
+    controls.update();
 
-    // ---------------------------
-    // 手勢統計（穩定偵測）
-    // ---------------------------
-    if (isPalm) {
-        palmCount++;
-    } else {
-        palmCount = 0;
+    if (mode === "tree") {
+        animateTree();
+    } else if (mode === "album") {
+        animateAlbum();
     }
 
-    if (zVal < -0.25) { // 手往前推（接近相機）
-        forwardCount++;
-    } else {
-        forwardCount = 0;
-    }
-
-    const PALM_STABLE = palmCount >= 18;     // Palm open ~0.45秒
-    const FORWARD_STABLE = forwardCount >= 10; // Forward ~0.25秒
-
-
-    // =====================================================
-    //                    A 模組（TREE）
-    // =====================================================
-    if (MODE === "TREE") {
-
-        // Palm → 切到 B
-        if (PALM_STABLE && now > lockUntil) {
-            MODE = "GALLERY";
-            lockUntil = now + 800;
-
-            layoutGallery(ornaments, 2.3, 1.8);
-            tree.material.transparent = true;
-            tree.material.opacity = 0.12;
-        }
-
-        // ------ 手勢左右旋轉 ------
-        if (hand) {
-            const rot = (hand.x - 0.5) * 3;
-            tree.rotation.y = rot;
-            ornamentGroup.rotation.y = rot;
-        }
-
-        // ------ 粒子爆散 ------
-        let dist = hand ? 1 - hand.y : 0;
-        let explosion = Math.pow(dist, 2.2) * 3.0;
-
-        // 粒子更新
-        for (let i = 0; i < pos.length; i += 3) {
-            pos[i]     = original[i]     * (1 + explosion);
-            pos[i + 1] = original[i + 1] * (1 + explosion);
-            pos[i + 2] = original[i + 2] * (1 + explosion);
-        }
-        geom.attributes.position.needsUpdate = true;
-
-        // ------ 小圖片跟著爆散 ------
-        for (let i = 0; i < ornaments.length; i++) {
-            const sp = ornaments[i];
-            const base = ornamentOriginal[i];
-
-            sp.position.set(
-                base.x * (1 + explosion * 1.3),
-                base.y * (1 + explosion * 1.3),
-                base.z * (1 + explosion * 1.3)
-            );
-        }
-    }
-
-
-    // =====================================================
-    //                    B 模組（GALLERY）
-    // =====================================================
-    else if (MODE === "GALLERY") {
-
-        // 手左右 → 相簿旋轉
-        if (hand) {
-            const spin = (hand.x - 0.5) * 2;
-            ornamentGroup.rotation.y += spin * 0.02;
-        }
-
-        // 手往前推 → 回 A 模組
-        if (FORWARD_STABLE && now > lockUntil) {
-            MODE = "TREE";
-            lockUntil = now + 800;
-
-            layoutNormal(ornaments, ornamentOriginal);
-            tree.material.opacity = 1.0;
-        }
-    }
-
+    checkGestureSwitch();
     renderer.render(scene, camera);
 }
 
-animate();
+// ---------------------------------------------
+// Tree Mode Animation
+// ---------------------------------------------
+function animateTree() {
+    album.visible = false;
+    tree.group.visible = true;
+
+    const pos = tree.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const o = tree.originalPositions[i];
+        pos.setXYZ(
+            i,
+            o.x + (Math.random() - 0.5) * explode,
+            o.y + (Math.random() - 0.5) * explode,
+            o.z + (Math.random() - 0.5) * explode
+        );
+    }
+    pos.needsUpdate = true;
+
+    if (explode > 0) explode *= 0.92; // 自動回收
+}
+
+// ---------------------------------------------
+// Album Mode Animation
+// ---------------------------------------------
+function animateAlbum() {
+    tree.group.visible = false;
+    album.visible = true;
+
+    album.rotation.y += 0.01;
+}
+
+// ---------------------------------------------
+// Gesture-based Mode Switching
+// ---------------------------------------------
+function checkGestureSwitch() {
+    if (!window.handGesture) return;
+
+    if (mode === "tree" && handGesture === "open") {
+        mode = "album";
+        explode = 15; // 進入時爆散特效
+    }
+
+    if (mode === "album" && handGesture === "forward") {
+        mode = "tree";
+    }
+}
