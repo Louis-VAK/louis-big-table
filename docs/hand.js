@@ -1,71 +1,40 @@
-window.handData = {
-  pos: null,
-  gesture: null,
-};
+// hand.js — MediaPipe Hands 偵測
 
-function startHandTracking() {
-  const video = document.createElement("video");
-  video.setAttribute("playsinline", "");
-  video.style.display = "none";
-  document.body.appendChild(video);
+window.handPos = null;
+window.handGesture = "none";
 
-  const hands = new Hands({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-  });
+function initHandTracking(videoElement) {
+    const hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
 
-  hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.6,
-    minTrackingConfidence: 0.5,
-  });
+    hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
 
-  hands.onResults((res) => {
-    if (!res.multiHandLandmarks || res.multiHandLandmarks.length === 0) {
-      window.handData.pos = null;
-      window.handData.gesture = null;
-      return;
-    }
+    hands.onResults(results => {
+        if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+            window.handPos = null;
+            window.handGesture = "none";
+            return;
+        }
 
-    const lm = res.multiHandLandmarks[0];
-    // 手掌中心（掌根）
-    const palm = lm[0];
-    window.handData.pos = { x: palm.x, y: palm.y };
+        const lm = results.multiHandLandmarks[0][9]; // index knuckle
 
-    // 手勢判定
-    const thumbTip = lm[4].y;
-    const indexTip = lm[8].y;
-    const pinkyTip = lm[20].y;
+        window.handPos = { x: lm.x, y: lm.y, z: lm.z };
 
-    // Palm Open：所有指尖高於掌心
-    if (
-      lm[8].y < palm.y &&
-      lm[12].y < palm.y &&
-      lm[16].y < palm.y &&
-      lm[20].y < palm.y
-    ) {
-      window.handData.gesture = "PALM";
-    }
-    // Fist：所有指尖低於掌心
-    else if (
-      lm[8].y > palm.y &&
-      lm[12].y > palm.y &&
-      lm[16].y > palm.y &&
-      lm[20].y > palm.y
-    ) {
-      window.handData.gesture = "FIST";
-    } else {
-      window.handData.gesture = null;
-    }
-  });
+        // 手勢判斷交給 gesture.js
+        window.handGesture = detectGesture(results.multiHandLandmarks[0]);
+    });
 
-  const cam = new Camera(video, {
-    onFrame: async () => {
-      await hands.send({ image: video });
-    },
-    width: 640,
-    height: 480,
-  });
+    const camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await hands.send({ image: videoElement });
+        }
+    });
 
-  cam.start();
+    camera.start();
 }
