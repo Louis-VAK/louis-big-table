@@ -1,99 +1,49 @@
-// ==========================
-// 🎄 B 模組：相簿模式 圖片清單
-// ==========================
-const ornamentsImages = [
-  "./assets/img1.png",
-  "./assets/img2.png",
-  "./assets/img3.png",
-  "./assets/img4.png",
-  "./assets/img5.png",
-  "./assets/img6.png"
-];
-
-
-// ==========================
-// 🎄 建立 6 張圖片 Sprite
-// ==========================
 function createOrnaments(scene) {
+  const loader = new THREE.TextureLoader();
+
+  const images = [
+    "./assets/img1.png",
+    "./assets/img2.png",
+    "./assets/img3.png",
+    "./assets/img4.png",
+    "./assets/img5.png",
+    "./assets/img6.png",
+  ];
+
+  const group = new THREE.Group();
+  scene.add(group);
+
   const ornaments = [];
 
-  ornamentsImages.forEach((src, i) => {
-    const texture = new THREE.TextureLoader().load(src);
-    const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-    const sprite = new THREE.Sprite(material);
+  images.forEach((img, i) => {
+    const tex = loader.load(img);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(mat);
 
-    // ⭐ B 模組預設大小（比之前放大 2 倍）
-    sprite.scale.set(1.4, 1.4, 1);
+    // A 模式：自然分布位置
+    sprite.position.set(
+      (Math.random() - 0.5) * 1.6, 
+      Math.random() * 1.8 - 0.2,
+      Math.random() * 0.8 - 0.4
+    );
 
-    // 暫時先全部放在中心，後續進 B 模組時重新定位
-    sprite.position.set(0, 0, 0);
+    sprite.scale.set(0.25, 0.25, 1);
+    group.add(sprite);
 
-    scene.add(sprite);
     ornaments.push(sprite);
   });
 
-  return ornaments;
+  return { group, ornaments };
 }
 
+// ----------------- 相簿模式（水平圓環排列） -----------------
+function layoutGallery(ornaments, R = 2.3, scale = 1.0) {
+  const N = ornaments.length;
 
-// ==========================
-// 🎄 A 模組：把圖片縮小到樹內 & 隨粒子一起動
-// ==========================
-function applyAStateOrnaments(ornaments, treeExplosion, treeRotationY) {
-  ornaments.forEach((s, i) => {
-    // 隨粒子縮放（粒子越炸開，圖片越外擴）
-    const baseR = 0.6 + i * 0.12;
-    const r = baseR * (1 + treeExplosion * 1.8);
+  ornaments.forEach((sp, i) => {
+    const angle = (i / N) * Math.PI * 2;
 
-    const ang = (i / ornaments.length) * Math.PI * 2 + treeRotationY * 0.6;
-
-    s.scale.set(0.35, 0.35, 1); // ⭐ A 模組圖片大小（不大）
-    s.position.set(
-      Math.cos(ang) * r,
-      -0.2 + Math.sin(i) * 0.15,
-      Math.sin(ang) * r
-    );
-
-    s.visible = true;
+    sp.position.set(Math.cos(angle) * R, 0, Math.sin(angle) * R);
+    sp.scale.set(scale, scale, 1);
   });
 }
-
-
-// ==========================
-// 🎄 B 模組：相簿模式（橫向 6 張卡片）
-// ==========================
-function applyBStateOrnaments(ornaments, centerRotationY) {
-  const radius = 2.8; // ⭐ B 模組水平旋轉半徑
-
-  ornaments.forEach((s, i) => {
-    const angle = centerRotationY + i * (Math.PI * 2 / ornaments.length);
-
-    s.scale.set(2.0, 2.0, 1); // ⭐ 你要求的：比之前放大 2 倍
-
-    s.position.set(
-      Math.cos(angle) * radius,
-      0,
-      Math.sin(angle) * radius
-    );
-
-    s.visible = true;
-  });
-}
-
-
-// ==========================
-// 🎄 退出 B 模組 → 隱藏圖片
-// ==========================
-function hideOrnaments(ornaments) {
-  ornaments.forEach(s => {
-    s.visible = false;
-  });
-}
-
-
-
-// 讓 main.js 可以讀取
-window.createOrnaments = createOrnaments;
-window.applyAStateOrnaments = applyAStateOrnaments;
-window.applyBStateOrnaments = applyBStateOrnaments;
-window.hideOrnaments = hideOrnaments;
