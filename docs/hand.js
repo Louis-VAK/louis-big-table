@@ -1,18 +1,15 @@
 window.handPos = null;
+window.okGesture = false;
 
 function startHandTracking() {
-
-  console.log("🚀 Hand tracking start");
-
   const video = document.createElement("video");
   video.setAttribute("playsinline", "");
   video.style.display = "none";
   document.body.appendChild(video);
 
-  // 🔥 使用可用版本的 Mediapipe Hands
   const hands = new Hands({
     locateFile: (file) =>
-      `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
+      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
   });
 
   hands.setOptions({
@@ -23,17 +20,31 @@ function startHandTracking() {
   });
 
   hands.onResults((results) => {
-    console.log("📷 callback → ", results.multiHandLandmarks);
-
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
       window.handPos = null;
       return;
     }
 
-    const pt = results.multiHandLandmarks[0][9];
+    const lm = results.multiHandLandmarks[0];
+    const pt = lm[9]; // rotation use
     window.handPos = { x: pt.x, y: pt.y };
 
-    console.log("👉 handPos:", window.handPos);
+    // -------------------------------------------------
+    // 👌 偵測 OK 手勢：拇指指尖靠近食指指尖
+    // -------------------------------------------------
+    const thumbTip = lm[4];
+    const indexTip = lm[8];
+
+    const dx = thumbTip.x - indexTip.x;
+    const dy = thumbTip.y - indexTip.y;
+    const dz = thumbTip.z - indexTip.z;
+
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    // ⭐ 閾值
+    if (dist < 0.04) {
+      window.okGesture = true;
+    }
   });
 
   const camera = new Camera(video, {
@@ -43,8 +54,6 @@ function startHandTracking() {
   });
 
   camera.start();
-
-  console.log("📸 Camera started");
 }
 
 window.startHandTracking = startHandTracking;
