@@ -1,30 +1,43 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Gesture Particle Christmas Tree</title>
+<meta charset="UTF-8">
+<title>V.A 3D Tree + Gesture Album</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="./style.css" />
-
-  <!-- Three r128 -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-  <!-- MediaPipe Hands -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<style>
+    body { margin:0; overflow:hidden; background:black; }
+    #video {
+        position: fixed;
+        right: 10px;
+        bottom: 10px;
+        width: 180px;
+        transform: scaleX(-1);
+        border: 2px solid #555;
+        border-radius: 6px;
+    }
+</style>
 </head>
 
 <body>
+<video id="video" autoplay playsinline></video>
 
-  <button id="startBtn">Start Interaction</button>
-  <canvas id="scene"></canvas>
+<!-- Three.js r128 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <script src="./tree.js"></script>
-  <script src="./ornaments.js"></script>
-  <script src="./hand.js"></script>
-  <script src="./main.js"></script>
+<!-- OrbitControls（與 r128 相容的非 module 版本） -->
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+
+<!-- MediaPipe Hands（非 ES Module 版） -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+<!-- 六個模組 -->
+<script src="js/tree.js"></script>
+<script src="js/ornaments.js"></script>
+<script src="js/hand.js"></script>
+<script src="js/gesture.js"></script>
+<script src="js/main.js"></script>
 
 </body>
 </html>
