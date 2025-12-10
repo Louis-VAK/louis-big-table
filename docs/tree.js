@@ -2,7 +2,10 @@ function createTree(scene) {
   const particleCount = 1800;
   const geometry = new THREE.BufferGeometry();
   const positions = [];
-  const originalPositions = []; // ⭐ 重要：記錄原始位置，用來做爆散後回復
+  const originalPositions = [];
+
+  const colors = [];
+  const color = new THREE.Color();
 
   for (let i = 0; i < particleCount; i++) {
     const radius = Math.random() * 1.2 * (1 - i / particleCount);
@@ -14,7 +17,14 @@ function createTree(scene) {
     const y = height - 1;
 
     positions.push(x, y, z);
-    originalPositions.push(x, y, z); // ⭐ 保存原始樹形
+    originalPositions.push(x, y, z);
+
+    // ⭐ 顏色：聖誕風格（紅 / 綠 / 金）
+    if (Math.random() < 0.3) color.set(0xff4444);   // 紅
+    else if (Math.random() < 0.6) color.set(0x44ff44); // 綠
+    else color.set(0xffdd55); // 金
+
+    colors.push(color.r, color.g, color.b);
   }
 
   geometry.setAttribute(
@@ -22,12 +32,16 @@ function createTree(scene) {
     new THREE.Float32BufferAttribute(positions, 3)
   );
 
-  // ⭐ 把原始位置掛在 geometry 上給 main.js 用
+  geometry.setAttribute(
+    "color",
+    new THREE.Float32BufferAttribute(colors, 3)
+  );
+
   geometry.userData.originalPositions = originalPositions;
 
   const material = new THREE.PointsMaterial({
-    color: 0x66ccff,
-    size: 0.025,
+    vertexColors: true,
+    size: 0.03
   });
 
   const tree = new THREE.Points(geometry, material);
